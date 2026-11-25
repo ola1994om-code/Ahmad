@@ -42,7 +42,7 @@ span.num,strong.num,b.num{display:inline-block}
     </div>
     <div id="sb-user" class="px-3.5 py-2.5 border-b border-slate-800/80 bg-slate-900/60 flex items-center justify-between gap-2"></div>
     <nav id="sb-nav" class="flex-1 p-3 space-y-1 overflow-y-auto text-sm"></nav>
-    <div class="p-3.5 border-t border-slate-800 text-[11px] text-slate-400 flex justify-between"><span class="num">ERP v7.0</span><span class="text-emerald-400 font-bold">● رقابة نشطة</span></div>
+    <div class="p-3.5 border-t border-slate-800 text-[11px] text-slate-400 flex justify-between"><span class="num">ERP v7.2</span><span class="text-emerald-400 font-bold">● رقابة نشطة</span></div>
   </aside>
   <div class="flex-1 flex flex-col min-w-0 w-full">
     <header class="sticky top-0 z-30 bg-white/95 backdrop-blur border-b border-slate-200 px-3 sm:px-6 py-2.5 flex items-center justify-between gap-2">
@@ -65,15 +65,15 @@ span.num,strong.num,b.num{display:inline-block}
 <script>
 const KEY='erp_corp_v5',SKEY='erp_active_uid',
 DEF_ADMIN=()=>({id:'u_admin',name:'المدير العام',title:'مدير النظام',role:'admin',pin:'1234',active:true,perms:{del:true,set:true,fin:true},ts:Date.now()}),
-DEF={s:{name:'',nameEn:'',sub:'',logo:'',cur:'$',phone:'',addr:'',bank:'',iban:'',ordP:'ORD-',invP:'INV-',rvP:'RV-',purP:'PUR-',pvP:'PV-',foot:'شكراً لتعاملكم معنا - Thank you for your business',nOrd:1001,nInv:2026001,nRv:1001,nPur:3001,nPv:2001},cust:[],sup:[],prod:[],ord:[],invs:[],pay:[],pur:[],spay:[],exp:[],users:[DEF_ADMIN()],logs:[]},
+DEF={s:{name:'',nameEn:'',sub:'',logo:'',cur:'$',phone:'',addr:'',bank:'',iban:'',ordP:'ORD-',invP:'INV-',rvP:'RV-',purP:'PUR-',pvP:'PV-',dnP:'DB-',foot:'شكراً لتعاملكم معنا - Thank you for your business',nOrd:1001,nInv:2026001,nRv:1001,nPur:3001,nPv:2001,nDn:4001},cust:[],sup:[],prod:[],ord:[],invs:[],pay:[],pur:[],spay:[],exp:[],users:[DEF_ADMIN()],logs:[]},
 CATS=['إيجار','رواتب وأجور','كهرباء ومياه','شحن ونقل','صيانة','مشتريات ونثريات','أخرى'],
 PAYM=['كاش','ويش ماني','بطاقة بنك','عملة رقمية'],
-SPAY_REASONS=['سداد قيمة بضاعة مستلمة','دفعة جزئية من سند شراء','تصفية حساب سند شراء بالكامل','تسوية رصيد سابق للتاجر','دفعة مقدمة على بضاعة'],
+SPAY_REASONS=['سداد سند دين بضاعة','دفعة جزئية من سند دين','تصفية سند دين بالكامل','شراء بضاعة نقدي','تسوية رصيد سابق للتاجر'],
 NAV=[['dashboard','لوحة التحكم','●','bg-blue-600'],['orders','الطلبيات والفواتير','■','bg-blue-600'],['customers','الزبائن','◆','bg-sky-600'],['debts','ديون الزبائن والقبض','◈','bg-emerald-600'],['suppliers','التجار والمشتريات','⇄','bg-amber-600'],['warehouse','المستودع','▣','bg-teal-600'],['expenses','المصاريف','◷','bg-rose-600'],['notifications','قسم الإشعارات','◉','bg-rose-600'],['staff','الإدارة والموظفين','★','bg-indigo-600'],['settings','إعدادات الشركة','☼','bg-slate-700']],
 LOG_CATS={ord:['طلبيات','bg-blue-100 text-blue-800'],inv:['فواتير','bg-indigo-100 text-indigo-800'],pay:['قبض ودفع','bg-emerald-100 text-emerald-800'],wh:['مستودع ومشتريات','bg-teal-100 text-teal-800'],exp:['مصاريف','bg-rose-100 text-rose-800'],crm:['زبائن وتجار','bg-sky-100 text-sky-800'],sys:['إدارة ونظام','bg-slate-200 text-slate-800']};
 
-let D=load(),curUser=null,view='dashboard',selC=null,tabC='inv',selS=null,tabS='pur',tabOrd='ord',tabWh='items',draft=[],pickQ='',pickMode='ord',selOrds=new Set(),curWA=null,
-F={oq:'',os:'all',cq:'',cd:'all',sq:'',sd:'all',wq:'',ws:'all',lq:'',lu:'all',lc:'all',lr:'all'};
+let D=load(),curUser=null,view='dashboard',selC=null,tabC='inv',selS=null,tabS='debts',tabSup='list',tabOrd='ord',tabWh='items',draft=[],pickQ='',pickMode='ord',selOrds=new Set(),curWA=null,
+F={oq:'',os:'all',cq:'',cd:'all',sq:'',sd:'all',sdb:'open',wq:'',ws:'all',lq:'',lu:'all',lc:'all',lr:'all'};
 
 function clone(o){return JSON.parse(JSON.stringify(o));}
 function load(){
@@ -87,6 +87,14 @@ function load(){
     if(!o.users.some(u=>u.role==='admin'&&u.active))o.users.unshift(DEF_ADMIN());
     o.logs=p.logs||[];
     o.prod.forEach(pr=>{if(pr.qtyLocked===undefined)pr.qtyLocked=(Number(pr.qty)||0)>0;});
+    o.pur.forEach(pr=>{
+      if(!pr.payType){
+        const paidAmt=o.spay.filter(x=>x.purId===pr.id).reduce((a,x)=>a+(Number(x.amt)||0),0);
+        if(paidAmt>=(Number(pr.total)||0)&&(Number(pr.total)||0)>0)pr.payType='cash';
+        else if(paidAmt>0){pr.payType='partial';if(!pr.bondNum)pr.bondNum=(o.s.dnP||'DB-')+(o.s.nDn++);}
+        else{pr.payType='debt';if(!pr.bondNum)pr.bondNum=(o.s.dnP||'DB-')+(o.s.nDn++);}
+      }
+    });
     o.ord.forEach(ord=>{
       if(ord.multiInvId&&!ord.invId)ord.invId=ord.multiInvId;
       if(ord.invNum&&!ord.invId){
@@ -224,7 +232,8 @@ function openNotifReport(id){
     const{type,id:rid}=m.link;
     if(type==='inv'&&byId(D.invs,rid))docBtn=`<button onclick="prevInv('${rid}')" class="btn b-gn">فتح الفاتورة</button>`;
     else if(type==='ord'&&byId(D.ord,rid))docBtn=`<button onclick="issueOrPrevInv('${rid}')" class="btn b-bl">فتح الفاتورة/الطلبية</button>`;
-    else if(type==='pur'&&byId(D.pur,rid))docBtn=`<button onclick="prevPur('${rid}')" class="btn b-tl">فتح سند الاستلام</button>`;
+    else if(type==='pur'&&byId(D.pur,rid))docBtn=`<button onclick="prevPur('${rid}')" class="btn b-tl">فتح سند الشراء</button>`;
+    else if(type==='bond'&&byId(D.pur,rid))docBtn=`<button onclick="prevDebtBond('${rid}')" class="btn b-rd">فتح سند الدين</button>`;
     else if(type==='rv'&&byId(D.pay,rid))docBtn=`<button onclick="prevRv('${rid}')" class="btn b-gn">فتح إيصال القبض</button>`;
     else if(type==='pv'&&byId(D.spay,rid))docBtn=`<button onclick="prevPv('${rid}')" class="btn b-am">فتح إيصال الدفع</button>`;
   }
@@ -290,18 +299,20 @@ function cLedger(id){
 }
 function purPaid(purId){return rn(D.spay.filter(p=>p.purId===purId).reduce((a,p)=>a+(Number(p.amt)||0),0));}
 function purRem(pur){return Math.max(0,rn((Number(pur?.total)||0)-purPaid(pur?.id)));}
+function debtBonds(sid=''){return D.pur.filter(p=>(p.bondNum||p.payType==='debt'||p.payType==='partial'||purRem(p)>0)&&(!sid||p.sid===sid)).sort((a,b)=>(b.ts||0)-(a.ts||0));}
+function openDebtBondsCount(sid=''){return debtBonds(sid).filter(p=>purRem(p)>0).length;}
 function sStats(id){
-  const s=byId(D.sup,id);if(!s)return{cnt:0,tot:0,paid:0,bal:0};
+  const s=byId(D.sup,id);if(!s)return{cnt:0,tot:0,paid:0,bal:0,openBonds:0};
   const op=Number(s.open)||0,purs=D.pur.filter(p=>p.sid===id),pays=D.spay.filter(p=>p.sid===id);
   const tot=rn(purs.reduce((a,p)=>a+(Number(p.total)||0),0)),paid=rn(pays.reduce((a,p)=>a+(Number(p.amt)||0),0));
-  return{cnt:purs.length,tot,paid,bal:rn(op+tot-paid)};
+  return{cnt:purs.length,tot,paid,bal:rn(op+tot-paid),openBonds:openDebtBondsCount(id)};
 }
 function sLedger(id){
   const s=byId(D.sup,id);if(!s)return[];
   const L=[],op=Number(s.open)||0;
   if(op)L.push({dt:'-',k:0,ref:'رصيد سابق',desc:'رصيد افتتاحي للتاجر',cr:op>0?op:0,dr:op<0?-op:0});
-  D.pur.filter(p=>p.sid===id).forEach(p=>L.push({dt:p.date,k:p.ts||0,ref:p.num,desc:`شراء ${p.num} - ${(p.items||[]).map(x=>x.name+' ×'+nf(x.qty)).join('، ')}`,cr:Number(p.total)||0,dr:0}));
-  D.spay.filter(p=>p.sid===id).forEach(p=>L.push({dt:p.date,k:p.ts||0,ref:p.num||'PV',desc:`إيصال دفع ${p.num||''} (${p.m||'كاش'})${p.purNum?' • مقابل '+p.purNum:''}${p.reason?' • '+p.reason:''}${p.note?' - '+p.note:''}`,cr:0,dr:Number(p.amt)||0}));
+  D.pur.filter(p=>p.sid===id).forEach(p=>L.push({dt:p.date,k:p.ts||0,ref:p.bondNum||p.num,desc:`${p.payType==='cash'?'شراء نقدي':'سند دين '+(p.bondNum||'')} (${p.num}) - ${(p.items||[]).map(x=>x.name+' ×'+nf(x.qty)).join('، ')}`,cr:Number(p.total)||0,dr:0}));
+  D.spay.filter(p=>p.sid===id).forEach(p=>L.push({dt:p.date,k:p.ts||0,ref:p.num||'PV',desc:`إيصال دفع ${p.num||''} (${p.m||'كاش'})${p.bondNum?' • سداد '+p.bondNum:p.purNum?' • مقابل '+p.purNum:''}${p.reason?' • '+p.reason:''}${p.note?' - '+p.note:''}`,cr:0,dr:Number(p.amt)||0}));
   L.sort((a,b)=>a.k-b.k);let r=0;return L.map(x=>{r=rn(r+x.cr-x.dr);return{...x,r};});
 }
 function dashStats(){
@@ -313,7 +324,7 @@ function dashStats(){
   wCost=rn(D.prod.reduce((a,p)=>a+Math.max(0,Number(p.qty)||0)*(Number(p.cost)||0),0)),
   wSell=rn(D.prod.reduce((a,p)=>a+Math.max(0,Number(p.qty)||0)*(Number(p.sell)||0),0)),
   low=D.prod.filter(p=>(Number(p.qty)||0)<=(Number(p.min)||0));
-  return{sales,coll,totPur,paidSup,exp,profit:rn(gp-exp),cash:rn(coll-exp-paidSup),debtors,debts:rn(debtors.reduce((a,x)=>a+x.bal,0)),creditors,payables:rn(creditors.reduce((a,x)=>a+x.bal,0)),wCost,wSell,low};
+  return{sales,coll,totPur,paidSup,exp,profit:rn(gp-exp),cash:rn(coll-exp-paidSup),debtors,debts:rn(debtors.reduce((a,x)=>a+x.bal,0)),creditors,payables:rn(creditors.reduce((a,x)=>a+x.bal,0)),openBonds:openDebtBondsCount(),wCost,wSell,low};
 }
 const stBadge=(s,pm)=>s==='paid'?[`مدفوع${pm?' • '+pm:''}`,'bg-emerald-100 text-emerald-800 border-emerald-300']:s==='partial'?[`جزئي${pm?' • '+pm:''}`,'bg-amber-100 text-amber-900 border-amber-300']:['دين (آجل)','bg-rose-100 text-rose-800 border-rose-300'];
 const skBadge=p=>{const q=Number(p.qty)||0,m=Number(p.min)||0;return q<=0?['out','نافذ','bg-rose-100 text-rose-800 border-rose-300']:q<=m?['low','منخفض','bg-amber-100 text-amber-900 border-amber-300']:['ok','متوفر','bg-teal-100 text-teal-800 border-teal-300'];};
@@ -359,20 +370,20 @@ function go(v){
   view=v;sb(0);window.scrollTo(0,0);render();
 }
 function openCust(id,t='inv'){selC=id;tabC=t;go('cdetail');}
-function openSup(id,t='pur'){selS=id;tabS=t;go('sdetail');}
+function openSup(id,t='debts'){selS=id;tabS=t;go('sdetail');}
 function renderChrome(){
   const st=dashStats(),hl=view==='cdetail'?'customers':view==='sdetail'?'suppliers':view,unread=isAdmin()?D.logs.filter(l=>!l.read).length:0;
   document.title=bName();$('sb-name').textContent=bName();$('sb-sub').textContent=D.s.sub||'Enterprise ERP';
   $('pg-sub').textContent=`${curUser?curUser.name+' ('+(isAdmin()?'مدير':curUser.title||'موظف')+') • ':''}${bName()}`;
   $('sb-logo').innerHTML=D.s.logo?`<img src="${D.s.logo}" class="w-full h-full object-contain bg-white p-0.5"/>`:'ERP';
   $('sb-user').innerHTML=curUser?`<div class="min-w-0"><div class="text-xs font-extrabold text-white truncate">${esc(curUser.name)}</div><div class="text-[10px] ${isAdmin()?'text-amber-300':'text-sky-300'} font-bold">${isAdmin()?'مدير النظام':esc(curUser.title||'موظف')}</div></div><button onclick="logout()" class="btn bg-slate-800 text-slate-200 text-[10px]">تبديل</button>`:'';
-  const titles={dashboard:'لوحة التحكم',orders:'الطلبيات والفواتير',customers:'الزبائن',cdetail:'ملف الزبون',debts:'ديون الزبائن والقبض',suppliers:'التجار والمشتريات',sdetail:'ملف التاجر',warehouse:'المستودع',expenses:'المصاريف',notifications:'قسم الإشعارات',staff:'الإدارة والموظفين',settings:'إعدادات الشركة'};
+  const titles={dashboard:'لوحة التحكم',orders:'الطلبيات والفواتير',customers:'الزبائن',cdetail:'ملف الزبون',debts:'ديون الزبائن والقبض',suppliers:'التجار وسندات الدين',sdetail:'ملف التاجر',warehouse:'المستودع',expenses:'المصاريف',notifications:'قسم الإشعارات',staff:'الإدارة والموظفين',settings:'إعدادات الشركة'};
   $('pg-title').textContent=titles[view]||'النظام المحاسبي';updNotifBadge();
   $('sb-nav').innerHTML=NAV.filter(([k])=>(k!=='staff'||isAdmin())&&(k!=='notifications'||isAdmin())&&(k!=='settings'||can('set'))).map(([k,lbl,ic,ac])=>{
-    const badge=k==='debts'&&st.debtors.length?`<span class="num text-[10px] bg-rose-500/25 text-rose-200 px-1.5 rounded-full">${st.debtors.length}</span>`:k==='suppliers'&&st.creditors.length?`<span class="num text-[10px] bg-amber-500/25 text-amber-200 px-1.5 rounded-full">${st.creditors.length}</span>`:k==='warehouse'&&st.low.length?`<span class="num text-[10px] bg-amber-500/25 text-amber-200 px-1.5 rounded-full">${st.low.length}</span>`:k==='notifications'&&unread?`<span class="num text-[10px] bg-rose-600 text-white px-1.5 rounded-full">${unread}</span>`:'';
+    const badge=k==='debts'&&st.debtors.length?`<span class="num text-[10px] bg-rose-500/25 text-rose-200 px-1.5 rounded-full">${st.debtors.length}</span>`:k==='suppliers'&&st.openBonds?`<span class="num text-[10px] bg-amber-500/25 text-amber-200 px-1.5 rounded-full">${st.openBonds}</span>`:k==='warehouse'&&st.low.length?`<span class="num text-[10px] bg-amber-500/25 text-amber-200 px-1.5 rounded-full">${st.low.length}</span>`:k==='notifications'&&unread?`<span class="num text-[10px] bg-rose-600 text-white px-1.5 rounded-full">${unread}</span>`:'';
     return `<button onclick="go('${k}')" class="w-full flex items-center justify-between px-3 py-2.5 rounded-xl font-bold cursor-pointer ${hl===k?ac+' text-white shadow':'text-slate-300 hover:bg-slate-800'}"><span class="flex items-center gap-2.5"><span>${ic}</span><span>${lbl}</span></span>${badge}</button>`;
   }).join('');
-  const mItems=[['dashboard','الرئيسية','●','text-blue-700 bg-blue-50'],['orders','الفواتير','■','text-blue-700 bg-blue-50'],['customers','الزبائن','◆','text-sky-700 bg-sky-50'],isAdmin()?['notifications','الإشعارات','◉','text-rose-700 bg-rose-50']:['warehouse','المستودع','▣','text-teal-700 bg-teal-50']];
+  const mItems=[['dashboard','الرئيسية','●','text-blue-700 bg-blue-50'],['orders','الفواتير','■','text-blue-700 bg-blue-50'],['suppliers','التجار','⇄','text-amber-700 bg-amber-50'],isAdmin()?['notifications','الإشعارات','◉','text-rose-700 bg-rose-50']:['warehouse','المستودع','▣','text-teal-700 bg-teal-50']];
   $('mnav').innerHTML=mItems.map(([k,l,ic,ac])=>`<button onclick="go('${k}')" class="relative flex flex-col items-center px-2.5 py-1 rounded-xl ${hl===k?ac:'text-slate-500'}"><span class="text-sm">${ic}</span><span>${l}</span>${k==='notifications'&&unread?`<span class="absolute -top-0.5 left-0.5 min-w-[15px] h-[15px] px-1 rounded-full bg-rose-600 text-white text-[9px] font-black flex items-center justify-center num">${unread}</span>`:''}</button>`).join('')+'<button onclick="sb(1)" class="flex flex-col items-center px-2.5 py-1 rounded-xl text-slate-500"><span class="text-sm">≡</span><span>المزيد</span></button>';
 }
 function render(){
@@ -403,11 +414,11 @@ function vDash(){
       </div>
     </div>
     <div class="rounded-2xl bg-gradient-to-l from-[#1c1306] via-amber-950 to-amber-700 text-white p-5 shadow-lg space-y-3">
-      <div class="flex justify-between items-center"><div><div class="text-xs text-amber-200 font-bold">ملخص التجار والمشتريات</div><div class="text-2xl font-black mt-0.5">${cf(s.totPur)}</div></div><button onclick="go('suppliers')" class="btn bg-white/15 text-white">التجار (<span class="num">${D.sup.length}</span>)</button></div>
+      <div class="flex justify-between items-center"><div><div class="text-xs text-amber-200 font-bold">ملخص التجار والمشتريات</div><div class="text-2xl font-black mt-0.5">${cf(s.totPur)}</div></div><button onclick="tabSup='debts';go('suppliers')" class="btn bg-white/15 text-white">سندات الدين (<span class="num">${s.openBonds}</span>)</button></div>
       <div class="grid grid-cols-3 gap-2 text-center pt-2 border-t border-white/15">
         <div class="bg-white/10 rounded-xl p-2"><div class="text-[10px] text-amber-200">دفعنا لهم</div><div class="text-sm font-black text-emerald-300">${cf(s.paidSup)}</div></div>
-        <div onclick="go('suppliers')" class="bg-amber-400/25 rounded-xl p-2 cursor-pointer"><div class="text-[10px] text-amber-100">المتبقي علينا</div><div class="text-sm font-black">${cf(s.payables)}</div></div>
-        <div class="bg-white/10 rounded-xl p-2"><div class="text-[10px] text-amber-200">لهم رصيد</div><div class="text-sm font-black num">${s.creditors.length}</div></div>
+        <div onclick="tabSup='debts';go('suppliers')" class="bg-amber-400/25 rounded-xl p-2 cursor-pointer"><div class="text-[10px] text-amber-100">المتبقي علينا</div><div class="text-sm font-black">${cf(s.payables)}</div></div>
+        <div onclick="tabSup='debts';go('suppliers')" class="bg-white/10 rounded-xl p-2 cursor-pointer"><div class="text-[10px] text-amber-200">سندات قائمة</div><div class="text-sm font-black num">${s.openBonds}</div></div>
       </div>
     </div>
   </div>
@@ -420,9 +431,9 @@ function vDash(){
   <div class="grid grid-cols-2 sm:grid-cols-6 gap-2">
     <button onclick="openOrdModal()" class="btn b-bl py-2.5">+ طلبية بيع</button>
     <button onclick="openInvModal()" class="btn b-dk py-2.5">إصدار فاتورة</button>
-    <button onclick="openPurModal()" class="btn b-tl py-2.5">+ استلام من تاجر</button>
+    <button onclick="openPurModal()" class="btn b-tl py-2.5">+ شراء من تاجر</button>
     <button onclick="openPayModal()" class="btn b-gn py-2.5">+ قبض من زبون</button>
-    <button onclick="openSpayModal()" class="btn b-am py-2.5">- دفع لتاجر</button>
+    <button onclick="openSpayModal()" class="btn b-am py-2.5">- سداد لتاجر</button>
     <button onclick="openExpModal()" class="btn b-rd py-2.5">- تسجيل مصروف</button>
   </div>
   <div class="grid grid-cols-1 ${isAdmin()?'lg:grid-cols-2':''} gap-4">
@@ -820,28 +831,117 @@ function prevRv(id){
   </div>`,{ph:c?.phone||'',msg:waMsg},'bg-emerald-950');
 }
 function vSupShell(){
-  const s=dashStats();
-  return `<div class="grid grid-cols-2 lg:grid-cols-4 gap-3"><div class="card p-3.5 border-r-4 border-amber-500"><div class="text-xs text-slate-500">التجار</div><div class="text-lg font-black mt-1 num">${D.sup.length}</div></div><div class="card p-3.5 border-r-4 border-indigo-600"><div class="text-xs text-slate-500">المشتريات</div><div class="text-lg font-black text-indigo-700 mt-1">${cf(s.totPur)}</div></div><div class="card p-3.5 border-r-4 border-emerald-600"><div class="text-xs text-slate-500">المدفوع</div><div class="text-lg font-black text-emerald-700 mt-1">${cf(s.paidSup)}</div></div><div class="card p-3.5 border-r-4 border-orange-600"><div class="text-xs text-amber-800 font-bold">المتبقي لهم</div><div class="text-lg font-black text-amber-700 mt-1">${cf(s.payables)}</div></div></div>
-  <div class="card p-3 flex flex-col lg:flex-row gap-2 justify-between"><div class="flex gap-2 flex-1"><input value="${esc(F.sq)}" oninput="F.sq=this.value;rSupList()" placeholder="بحث باسم التاجر..." class="inp flex-1 bg-slate-50"/><select onchange="F.sd=this.value;rSupList()" class="inp bg-slate-50 text-xs"><option value="all">الكل</option><option value="pay">له رصيد</option><option value="ok">خالص</option></select></div><div class="grid grid-cols-3 sm:flex gap-1.5"><button onclick="openSupModal()" class="btn bg-amber-100 text-amber-900 py-2">+ تاجر</button><button onclick="openPurModal()" class="btn b-tl py-2">+ استلام رسمي</button><button onclick="openSpayModal()" class="btn b-am py-2">- دفع لتاجر</button></div></div><div id="sup-list" class="min-h-[45vh]"></div>`;
+  const s=dashStats(),allBonds=debtBonds(),openCnt=allBonds.filter(p=>purRem(p)>0).length;
+  return `<div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+    <div class="card p-3.5 border-r-4 border-amber-500"><div class="text-xs text-slate-500">التجار</div><div class="text-lg font-black mt-1 num">${D.sup.length}</div></div>
+    <div onclick="tabSup='debts';render()" class="card p-3.5 border-r-4 border-rose-600 cursor-pointer"><div class="text-xs text-rose-700 font-bold">سندات دين قائمة</div><div class="text-lg font-black text-rose-700 mt-1 num">${openCnt}</div></div>
+    <div class="card p-3.5 border-r-4 border-emerald-600"><div class="text-xs text-slate-500">المدفوع للتجار</div><div class="text-lg font-black text-emerald-700 mt-1">${cf(s.paidSup)}</div></div>
+    <div class="card p-3.5 border-r-4 border-orange-600"><div class="text-xs text-amber-800 font-bold">المتبقي علينا</div><div class="text-lg font-black text-amber-700 mt-1">${cf(s.payables)}</div></div>
+  </div>
+  <div class="card p-1.5 grid grid-cols-3 gap-1.5 text-xs font-extrabold">
+    <button onclick="tabSup='list';render()" class="py-2 rounded-xl cursor-pointer ${tabSup==='list'?'bg-amber-600 text-white':'text-slate-600'}">التجار (<span class="num">${D.sup.length}</span>)</button>
+    <button onclick="tabSup='debts';render()" class="py-2 rounded-xl cursor-pointer ${tabSup==='debts'?'bg-rose-700 text-white':'text-slate-600'}">سندات الدين (<span class="num">${openCnt}</span>)</button>
+    <button onclick="tabSup='receipts';render()" class="py-2 rounded-xl cursor-pointer ${tabSup==='receipts'?'bg-emerald-700 text-white':'text-slate-600'}">إيصالات النقدي والدفع (<span class="num">${D.spay.length}</span>)</button>
+  </div>
+  <div class="card p-3 flex flex-col lg:flex-row gap-2 justify-between">
+    <div class="flex flex-wrap gap-2 flex-1">
+      <input value="${esc(F.sq)}" oninput="F.sq=this.value;rSupList()" placeholder="${tabSup==='debts'?'بحث برقم السند أو التاجر أو اسم البضاعة...':tabSup==='receipts'?'بحث برقم الإيصال أو التاجر...':'بحث باسم التاجر أو الهاتف...'}" class="inp flex-1 min-w-[160px] bg-slate-50"/>
+      ${tabSup==='list'?`<select onchange="F.sd=this.value;rSupList()" class="inp bg-slate-50 text-xs font-bold"><option value="all" ${F.sd==='all'?'selected':''}>الكل</option><option value="pay" ${F.sd==='pay'?'selected':''}>له رصيد</option><option value="ok" ${F.sd==='ok'?'selected':''}>خالص</option></select>`:''}
+      ${tabSup==='debts'?`<select onchange="F.sdb=this.value;rSupList()" class="inp bg-slate-50 text-xs font-bold"><option value="open" ${F.sdb==='open'?'selected':''}>سندات قائمة (غير مسددة)</option><option value="paid" ${F.sdb==='paid'?'selected':''}>سندات مسددة</option><option value="all" ${F.sdb==='all'?'selected':''}>كل سندات الدين</option></select>`:''}
+    </div>
+    <div class="grid grid-cols-3 sm:flex gap-1.5 shrink-0">
+      <button onclick="openSupModal()" class="btn bg-amber-100 text-amber-900 py-2">+ تاجر</button>
+      <button onclick="openPurModal()" class="btn b-tl py-2">+ شراء بضاعة</button>
+      <button onclick="openSpayModal()" class="btn b-am py-2">- سداد دين</button>
+    </div>
+  </div>
+  <div id="sup-list" class="min-h-[45vh]"></div>`;
 }
 function rSupList(){
-  const el=$('sup-list');if(!el)return;const q=F.sq.trim().toLowerCase(),list=D.sup.map(s=>({...s,st:sStats(s.id)})).filter(s=>(F.sd!=='pay'||s.st.bal>0)&&(F.sd!=='ok'||s.st.bal<=0)&&(!q||(s.name||'').toLowerCase().includes(q)||(s.phone||'').toLowerCase().includes(q)));
-  el.innerHTML=!list.length?'<div class="card p-10 text-center text-slate-400 text-sm">لا يوجد تجار</div>':`<div class="space-y-2.5">${list.map(s=>`<div onclick="openSup('${s.id}')" class="card p-3.5 border-r-4 border-amber-500 flex flex-col sm:flex-row sm:items-center justify-between gap-3 cursor-pointer"><div><div class="font-extrabold flex items-center gap-1.5 flex-wrap"><span>${esc(s.name)}</span>${byBadge(s.by)}</div><div class="text-xs text-slate-500"><span class="num">${esc(s.phone||'بدون هاتف')}</span> • <span class="num">${s.st.cnt}</span> سندات شراء</div></div><div class="flex flex-wrap items-center gap-2" onclick="event.stopPropagation()"><div class="text-left ml-2"><div class="text-[10px] text-slate-400">المتبقي له</div><div class="font-black text-sm ${s.st.bal>0?'text-amber-700':'text-emerald-600'}">${cf(s.st.bal)}</div></div>${waBtn(s.phone)}<button onclick="openSpayModal('${s.id}')" class="btn b-am">- دفع</button><button onclick="prevSStmt('${s.id}')" class="btn b-vi">كشف</button></div></div>`).join('')}</div>`;
+  const el=$('sup-list');if(!el)return;const q=F.sq.trim().toLowerCase();
+  if(tabSup==='debts'){
+    const list=debtBonds().filter(p=>{
+      const rm=purRem(p);
+      if(F.sdb==='open'&&rm<=0)return false;
+      if(F.sdb==='paid'&&rm>0)return false;
+      if(!q)return true;
+      return (p.bondNum||'').toLowerCase().includes(q)||(p.num||'').toLowerCase().includes(q)||(p.sname||'').toLowerCase().includes(q)||(p.items||[]).some(x=>(x.name||'').toLowerCase().includes(q));
+    });
+    el.innerHTML=!list.length?'<div class="card p-10 text-center text-slate-400 text-sm">لا توجد سندات دين مطابقة</div>':`<div class="space-y-2.5">${list.map(p=>{
+      const pd=purPaid(p.id),rm=purRem(p);
+      return `<div class="card p-3.5 border-r-4 ${rm>0?'border-rose-600':'border-emerald-600'} space-y-2">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div class="min-w-0 space-y-0.5">
+            <div class="flex items-center gap-1.5 flex-wrap">
+              <span class="px-2 py-0.5 rounded bg-rose-100 text-rose-900 text-xs font-black num">سند دين ${esc(p.bondNum||p.num)}</span>
+              <span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold ${rm>0?'bg-amber-100 text-amber-900 border border-amber-300':'bg-emerald-100 text-emerald-800 border border-emerald-300'}">${rm>0?'قائم • متبقي '+cfp(rm):'مسدد بالكامل ✓'}</span>
+              <span class="text-xs text-slate-500 font-bold">التاريخ: <strong class="num text-slate-800">${esc(fmtDate(p.date))}</strong></span>
+              ${byBadge(p.by)}
+            </div>
+            <div class="text-sm font-black text-slate-900">لمين (التاجر): ${p.sid?`<button onclick="openSup('${p.sid}')" class="text-amber-800 hover:underline cursor-pointer">${esc(p.sname)}</button>`:esc(p.sname)}</div>
+          </div>
+          <div class="flex flex-wrap items-center gap-1.5 shrink-0">
+            ${rm>0?`<button onclick="openSpayModal('${p.sid||''}','${p.id}')" class="btn b-am">- سداد السند</button>`:''}
+            <button onclick="prevDebtBond('${p.id}')" class="btn b-rd">عرض السند</button>
+            ${can('del')?`<button onclick="delPur('${p.id}')" class="btn b-rs">حذف</button>`:''}
+          </div>
+        </div>
+        <div class="bg-slate-50 rounded-xl border border-slate-200 p-2.5">
+          <div class="text-[11px] font-extrabold text-slate-600 mb-1">حق شو (تفاصيل البضاعة):</div>
+          ${itemChips(p.items)}
+          <div class="grid grid-cols-3 gap-2 text-center text-xs mt-2 pt-2 border-t border-slate-200">
+            <div><span class="text-slate-500 block text-[10px]">موقفة علينا</span><strong class="text-indigo-900">${cf(p.total)}</strong></div>
+            <div><span class="text-slate-500 block text-[10px]">المدفوع منه</span><strong class="text-emerald-700">${cf(pd)}</strong></div>
+            <div><span class="text-slate-500 block text-[10px]">المتبقي للدفع</span><strong class="${rm>0?'text-rose-600':'text-emerald-700'}">${cf(rm)}</strong></div>
+          </div>
+        </div>
+      </div>`;
+    }).join('')}</div>`;
+    return;
+  }
+  if(tabSup==='receipts'){
+    const list=[...D.spay].filter(p=>!q||(p.num||'').toLowerCase().includes(q)||(p.sname||'').toLowerCase().includes(q)||(p.bondNum||'').toLowerCase().includes(q)||(p.reason||'').toLowerCase().includes(q)).sort((a,b)=>(b.ts||0)-(a.ts||0));
+    el.innerHTML=!list.length?'<div class="card p-10 text-center text-slate-400 text-sm">لا توجد إيصالات دفع أو شراء نقدي</div>':`<div class="space-y-2">${list.map(p=>`<div class="card p-3.5 border-r-4 ${p.isCashPur?'border-emerald-600':'border-amber-500'} flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+      <div class="min-w-0 flex-1 space-y-0.5">
+        <div class="flex items-center gap-1.5 flex-wrap">
+          <span class="px-2 py-0.5 rounded text-[10px] font-black ${p.isCashPur?'bg-emerald-100 text-emerald-900':'bg-amber-100 text-amber-900'}">${p.isCashPur?'إيصال شراء نقدي':'إيصال سداد دين'}</span>
+          <span class="font-black text-sm num">${esc(p.num||'PV')}</span>
+          ${p.bondNum?`<span class="px-1.5 py-0.5 rounded bg-rose-100 text-rose-800 text-[10px] font-extrabold num">سند ${esc(p.bondNum)}</span>`:''}
+          <span class="text-xs text-slate-400 num">${esc(fmtDate(p.date))}</span>
+          ${byBadge(p.by)}
+        </div>
+        <div class="text-sm font-bold text-slate-900">للتاجر: ${p.sid?`<button onclick="openSup('${p.sid}')" class="text-amber-800 cursor-pointer">${esc(p.sname)}</button>`:esc(p.sname)} • <span class="text-xs text-slate-600">${esc(p.m||'كاش')}</span></div>
+        <div class="text-xs text-slate-600">${esc(p.reason||'دفعة')}${p.note?' — '+esc(p.note):''}</div>
+        ${itemChips(p.items)}
+      </div>
+      <div class="flex items-center gap-2 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0">
+        <strong class="text-base font-black text-emerald-700">${cf(p.amt)}</strong>
+        <button onclick="prevPv('${p.id}')" class="btn b-gn">الإيصال</button>
+        ${can('del')?`<button onclick="delSpay('${p.id}')" class="btn b-rs">حذف</button>`:''}
+      </div>
+    </div>`).join('')}</div>`;
+    return;
+  }
+  const list=D.sup.map(s=>({...s,st:sStats(s.id)})).filter(s=>(F.sd!=='pay'||s.st.bal>0)&&(F.sd!=='ok'||s.st.bal<=0)&&(!q||(s.name||'').toLowerCase().includes(q)||(s.phone||'').toLowerCase().includes(q)));
+  el.innerHTML=!list.length?'<div class="card p-10 text-center text-slate-400 text-sm">لا يوجد تجار</div>':`<div class="space-y-2.5">${list.map(s=>`<div onclick="openSup('${s.id}')" class="card p-3.5 border-r-4 border-amber-500 flex flex-col sm:flex-row sm:items-center justify-between gap-3 cursor-pointer"><div><div class="font-extrabold flex items-center gap-1.5 flex-wrap"><span>${esc(s.name)}</span>${s.st.openBonds?`<span class="px-2 py-0.5 rounded-full bg-rose-100 text-rose-800 text-[10px] font-black num">${s.st.openBonds} سند دين</span>`:''}${byBadge(s.by)}</div><div class="text-xs text-slate-500"><span class="num">${esc(s.phone||'بدون هاتف')}</span> • <span class="num">${s.st.cnt}</span> مشتريات</div></div><div class="flex flex-wrap items-center gap-2" onclick="event.stopPropagation()"><div class="text-left ml-2"><div class="text-[10px] text-slate-400">المتبقي له</div><div class="font-black text-sm ${s.st.bal>0?'text-amber-700':'text-emerald-600'}">${cf(s.st.bal)}</div></div>${waBtn(s.phone)}<button onclick="openSpayModal('${s.id}')" class="btn b-am">- سداد</button><button onclick="prevSStmt('${s.id}')" class="btn b-vi">كشف</button></div></div>`).join('')}</div>`;
 }
+
 function vSupDet(){
   const s=byId(D.sup,selS);if(!s)return`<div class="card p-8 text-center"><button onclick="go('suppliers')" class="btn b-am">العودة</button></div>`;
-  const st=sStats(s.id),purs=D.pur.filter(p=>p.sid===s.id).sort((a,b)=>(b.ts||0)-(a.ts||0)),pays=D.spay.filter(p=>p.sid===s.id).sort((a,b)=>(b.ts||0)-(a.ts||0)),L=sLedger(s.id);
+  const st=sStats(s.id),bonds=debtBonds(s.id),purs=D.pur.filter(p=>p.sid===s.id).sort((a,b)=>(b.ts||0)-(a.ts||0)),pays=D.spay.filter(p=>p.sid===s.id).sort((a,b)=>(b.ts||0)-(a.ts||0)),L=sLedger(s.id);
   return `<div class="card p-4 space-y-3 border-t-4 border-amber-500">
-    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2"><div class="flex items-center gap-2.5"><button onclick="go('suppliers')" class="btn bg-amber-50 text-amber-900">→</button><div><h2 class="text-lg font-black">${esc(s.name)}</h2><div class="text-xs text-slate-500"><span class="num">${esc(s.phone||'-')}</span> ${s.addr?'• '+esc(s.addr):''}</div></div></div><div class="flex flex-wrap gap-1.5">${waBtn(s.phone)}<button onclick="openPurModal('${s.id}')" class="btn b-tl">+ استلام بضاعة</button><button onclick="openSpayModal('${s.id}')" class="btn b-am">- دفع</button><button onclick="prevSStmt('${s.id}')" class="btn b-vi">كشف حساب</button></div></div>
-    <div class="grid grid-cols-2 lg:grid-cols-4 gap-2 pt-2 border-t"><div class="bg-slate-50 p-2.5 rounded-xl"><div class="text-[11px] text-slate-500">سندات الشراء</div><div class="font-black num">${st.cnt}</div></div><div class="bg-indigo-50 p-2.5 rounded-xl"><div class="text-[11px] text-indigo-700 font-bold">إجمالي البضاعة</div><div class="font-black text-indigo-900">${cf(st.tot)}</div></div><div class="bg-emerald-50 p-2.5 rounded-xl"><div class="text-[11px] text-emerald-700 font-bold">المدفوع</div><div class="font-black text-emerald-700">${cf(st.paid)}</div></div><div class="${st.bal>0?'bg-amber-50':'bg-emerald-50'} p-2.5 rounded-xl"><div class="text-[11px] font-bold">المتبقي له</div><div class="font-black ${st.bal>0?'text-amber-700':'text-emerald-600'}">${cf(st.bal)}</div></div></div>
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2"><div class="flex items-center gap-2.5"><button onclick="go('suppliers')" class="btn bg-amber-50 text-amber-900">→</button><div><h2 class="text-lg font-black">${esc(s.name)}</h2><div class="text-xs text-slate-500"><span class="num">${esc(s.phone||'-')}</span> ${s.addr?'• '+esc(s.addr):''}</div></div></div><div class="flex flex-wrap gap-1.5">${waBtn(s.phone)}<button onclick="openPurModal('${s.id}')" class="btn b-tl">+ شراء بضاعة</button><button onclick="openSpayModal('${s.id}')" class="btn b-am">- سداد دين</button><button onclick="prevSStmt('${s.id}')" class="btn b-vi">كشف حساب</button></div></div>
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-2 pt-2 border-t"><div class="bg-rose-50 p-2.5 rounded-xl"><div class="text-[11px] text-rose-700 font-bold">سندات دين قائمة</div><div class="font-black text-rose-700 num">${st.openBonds}</div></div><div class="bg-indigo-50 p-2.5 rounded-xl"><div class="text-[11px] text-indigo-700 font-bold">إجمالي البضاعة</div><div class="font-black text-indigo-900">${cf(st.tot)}</div></div><div class="bg-emerald-50 p-2.5 rounded-xl"><div class="text-[11px] text-emerald-700 font-bold">المدفوع</div><div class="font-black text-emerald-700">${cf(st.paid)}</div></div><div class="${st.bal>0?'bg-amber-50':'bg-emerald-50'} p-2.5 rounded-xl"><div class="text-[11px] font-bold">المتبقي له</div><div class="font-black ${st.bal>0?'text-amber-700':'text-emerald-600'}">${cf(st.bal)}</div></div></div>
   </div>
-  <div class="card overflow-hidden"><div class="grid grid-cols-3 bg-amber-50 p-1 gap-1 border-b text-xs font-bold">
-    <button onclick="tabS='pur';render()" class="py-2 rounded-xl cursor-pointer ${tabS==='pur'?'bg-indigo-700 text-white':'text-amber-950'}">الشراء (${purs.length})</button>
-    <button onclick="tabS='pay';render()" class="py-2 rounded-xl cursor-pointer ${tabS==='pay'?'bg-amber-600 text-white':'text-amber-950'}">الدفع (${pays.length})</button>
+  <div class="card overflow-hidden"><div class="grid grid-cols-4 bg-amber-50 p-1 gap-1 border-b text-[11px] font-bold">
+    <button onclick="tabS='debts';render()" class="py-2 rounded-xl cursor-pointer ${tabS==='debts'?'bg-rose-700 text-white':'text-amber-950'}">سندات الدين (${bonds.length})</button>
+    <button onclick="tabS='pur';render()" class="py-2 rounded-xl cursor-pointer ${tabS==='pur'?'bg-indigo-700 text-white':'text-amber-950'}">المشتريات (${purs.length})</button>
+    <button onclick="tabS='pay';render()" class="py-2 rounded-xl cursor-pointer ${tabS==='pay'?'bg-emerald-700 text-white':'text-amber-950'}">الإيصالات (${pays.length})</button>
     <button onclick="tabS='stmt';render()" class="py-2 rounded-xl cursor-pointer ${tabS==='stmt'?'bg-violet-700 text-white':'text-amber-950'}">الكشف (${L.length})</button>
   </div>
-  ${tabS==='pur'?(purs.length?`<div class="divide-y">${purs.map(p=>{const pd=purPaid(p.id),rm=purRem(p);return`<div class="p-3.5 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2.5"><div class="flex-1 min-w-0"><div class="flex items-center gap-1.5 flex-wrap"><span class="font-black text-sm num">${esc(p.num)}</span><span class="text-xs text-slate-400 num">• ${esc(fmtDate(p.date))}</span><span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold ${rm<=0?'bg-emerald-100 text-emerald-800':'bg-amber-100 text-amber-900'}">${rm<=0?'مسدد بالكامل':'متبقي: '+cfp(rm)}</span>${byBadge(p.by)}</div><div class="text-[11px] text-slate-600 mt-0.5">موقفة علينا: <strong class="text-indigo-800">${cf(p.total)}</strong> • مدفوع منها: <strong class="text-emerald-700">${cf(pd)}</strong> • متبقي: <strong class="${rm>0?'text-rose-600':'text-slate-400'}">${cf(rm)}</strong></div>${itemChips(p.items)}</div><div class="flex items-center gap-1.5 shrink-0">${rm>0?`<button onclick="openSpayModal('${s.id}','${p.id}')" class="btn b-am">- دفع للسند</button>`:''}<button onclick="prevPur('${p.id}')" class="btn b-in">عرض</button>${can('del')?`<button onclick="delPur('${p.id}')" class="btn b-rs">حذف</button>`:''}</div></div>`;}).join('')}</div>`:'<div class="p-8 text-center text-slate-400 text-xs">لا توجد مشتريات</div>'):''}
-  ${tabS==='pay'?(pays.length?`<div class="divide-y">${pays.map(p=>`<div class="p-3.5 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2"><div><div class="font-black text-amber-700 flex items-center gap-1.5 flex-wrap"><span>${cf(p.amt)}</span><span class="text-xs text-slate-400 num">${esc(p.num||'')}</span>${p.purNum?`<span class="px-1.5 py-0.5 rounded bg-indigo-100 text-indigo-800 text-[10px] font-extrabold num">مقابل ${esc(p.purNum)}</span>`:''}${byBadge(p.by)}</div><div class="text-xs text-slate-600 mt-0.5"><span class="num">${esc(fmtDate(p.date))}</span> • ${esc(p.m||'كاش')}${p.reason?' • <strong>'+esc(p.reason)+'</strong>':''}${p.note?' • '+esc(p.note):''}</div></div><div class="flex gap-1.5 shrink-0"><button onclick="prevPv('${p.id}')" class="btn b-am">الإيصال</button>${can('del')?`<button onclick="delSpay('${p.id}')" class="btn b-rs">حذف</button>`:''}</div></div>`).join('')}</div>`:'<div class="p-8 text-center text-slate-400 text-xs">لا توجد إيصالات</div>'):''}
+  ${tabS==='debts'?(bonds.length?`<div class="divide-y">${bonds.map(p=>{const pd=purPaid(p.id),rm=purRem(p);return`<div class="p-3.5 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2.5"><div class="flex-1 min-w-0"><div class="flex items-center gap-1.5 flex-wrap"><span class="px-2 py-0.5 rounded bg-rose-100 text-rose-900 font-black text-xs num">${esc(p.bondNum||p.num)}</span><span class="text-xs text-slate-400 num">• ${esc(fmtDate(p.date))}</span><span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold ${rm<=0?'bg-emerald-100 text-emerald-800':'bg-amber-100 text-amber-900'}">${rm<=0?'مسدد بالكامل':'متبقي: '+cfp(rm)}</span>${byBadge(p.by)}</div><div class="text-[11px] text-slate-600 mt-0.5">موقفة علينا: <strong class="text-indigo-800">${cf(p.total)}</strong> • مدفوع: <strong class="text-emerald-700">${cf(pd)}</strong> • متبقي: <strong class="${rm>0?'text-rose-600':'text-slate-400'}">${cf(rm)}</strong></div>${itemChips(p.items)}</div><div class="flex items-center gap-1.5 shrink-0">${rm>0?`<button onclick="openSpayModal('${s.id}','${p.id}')" class="btn b-am">- سداد</button>`:''}<button onclick="prevDebtBond('${p.id}')" class="btn b-rd">عرض السند</button></div></div>`;}).join('')}</div>`:'<div class="p-8 text-center text-slate-400 text-xs">لا توجد سندات دين على هذا التاجر</div>'):''}
+  ${tabS==='pur'?(purs.length?`<div class="divide-y">${purs.map(p=>{const pd=purPaid(p.id),rm=purRem(p);return`<div class="p-3.5 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2.5"><div class="flex-1 min-w-0"><div class="flex items-center gap-1.5 flex-wrap"><span class="font-black text-sm num">${esc(p.num)}</span><span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold ${p.payType==='cash'?'bg-emerald-100 text-emerald-800':'bg-rose-100 text-rose-800'}">${p.payType==='cash'?'شراء نقدي':'سند دين '+(p.bondNum||'')}</span><span class="text-xs text-slate-400 num">${esc(fmtDate(p.date))}</span>${byBadge(p.by)}</div>${itemChips(p.items)}</div><div class="flex items-center gap-1.5 shrink-0"><strong>${cf(p.total)}</strong><button onclick="${p.bondNum?`prevDebtBond('${p.id}')`:`prevPur('${p.id}')`}" class="btn b-in">عرض</button>${can('del')?`<button onclick="delPur('${p.id}')" class="btn b-rs">حذف</button>`:''}</div></div>`;}).join('')}</div>`:'<div class="p-8 text-center text-slate-400 text-xs">لا توجد مشتريات</div>'):''}
+  ${tabS==='pay'?(pays.length?`<div class="divide-y">${pays.map(p=>`<div class="p-3.5 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2"><div><div class="font-black text-emerald-700 flex items-center gap-1.5 flex-wrap"><span>${cf(p.amt)}</span><span class="text-xs text-slate-400 num">${esc(p.num||'')}</span><span class="px-1.5 py-0.5 rounded text-[10px] font-extrabold ${p.isCashPur?'bg-emerald-100 text-emerald-800':'bg-amber-100 text-amber-800'}">${p.isCashPur?'نقدي':'سداد دين'}</span>${p.bondNum?`<span class="px-1.5 py-0.5 rounded bg-rose-100 text-rose-800 text-[10px] font-extrabold num">${esc(p.bondNum)}</span>`:''}${byBadge(p.by)}</div><div class="text-xs text-slate-600 mt-0.5"><span class="num">${esc(fmtDate(p.date))}</span> • ${esc(p.m||'كاش')}${p.reason?' • <strong>'+esc(p.reason)+'</strong>':''}${p.note?' • '+esc(p.note):''}</div></div><div class="flex gap-1.5 shrink-0"><button onclick="prevPv('${p.id}')" class="btn b-gn">الإيصال</button>${can('del')?`<button onclick="delSpay('${p.id}')" class="btn b-rs">حذف</button>`:''}</div></div>`).join('')}</div>`:'<div class="p-8 text-center text-slate-400 text-xs">لا توجد إيصالات</div>'):''}
   ${tabS==='stmt'?(L.length?`<div class="divide-y">${L.map(r=>`<div class="p-3 flex justify-between items-center gap-2 text-xs"><div><span class="font-bold text-violet-800 num">${esc(r.ref)}</span> <span class="text-slate-400 num">${esc(fmtDate(r.dt))}</span><div class="truncate">${esc(r.desc)}</div></div><div class="text-left shrink-0">${r.cr?`<div class="text-amber-700 font-bold">شراء: <span class="num">${nf(r.cr)}</span></div>`:''}${r.dr?`<div class="text-emerald-700 font-bold">دفع: <span class="num">${nf(r.dr)}</span></div>`:''}<div class="font-black">الرصيد: <span class="num">${nf(r.r)}</span></div></div></div>`).join('')}</div>`:'<div class="p-8 text-center text-slate-400 text-xs">لا توجد حركات</div>'):''}</div>`;
 }
 function openSupModal(id=''){const s=id?byId(D.sup,id):null;modal(`<div class="p-4 border-b flex justify-between bg-amber-600 text-white"><h3 class="font-extrabold">${s?'تعديل تاجر':'إضافة تاجر'}</h3><button onclick="closeM()" class="cursor-pointer">×</button></div><form onsubmit="saveSup(event,'${id}')" class="p-4 space-y-3"><input id="sn" required value="${esc(s?.name||'')}" placeholder="اسم التاجر *" class="inp w-full"/><div class="grid grid-cols-2 gap-2.5"><input id="sp" value="${esc(s?.phone||'')}" placeholder="الهاتف" class="inp num"/><input id="so" type="number" step="any" value="${s?Number(s.open)||0:0}" placeholder="رصيد سابق له" class="inp num"/></div><input id="sa" value="${esc(s?.addr||'')}" placeholder="العنوان" class="inp w-full"/><div class="flex justify-end gap-2"><button type="button" onclick="closeM()" class="btn b-lt px-4 py-2">إلغاء</button><button class="btn b-am px-5 py-2">حفظ</button></div></form>`);}
@@ -851,61 +951,116 @@ function openPurModal(preS=''){
   if(!D.prod.length){toast('أضف أصنافاً في المستودع أولاً','warn');go('warehouse');return;}
   if(!D.sup.length){toast('أضف تاجراً أولاً — لا يُسمح باستلام البضاعة إلا بسند رسمي من تاجر','warn');go('suppliers');openSupModal();return;}
   draft=[];pickQ='';pickMode='pur';
-  modal(`<div class="p-4 border-b flex justify-between bg-teal-700 text-white"><h3 class="font-extrabold">استلام رسمي من تاجر (<span class="num">${esc(D.s.purP+D.s.nPur)}</span>)</h3><button onclick="closeM()" class="cursor-pointer">×</button></div>
+  modal(`<div class="p-4 border-b flex justify-between bg-teal-700 text-white"><h3 class="font-extrabold">شراء واستلام بضاعة من تاجر (<span class="num">${esc(D.s.purP+D.s.nPur)}</span>)</h3><button onclick="closeM()" class="cursor-pointer">×</button></div>
     <form onsubmit="savePur(event)" class="p-4 space-y-3 max-h-[84vh] overflow-y-auto">
-      <div class="rounded-xl bg-amber-50 border border-amber-200 px-3 py-2 text-[11px] font-bold text-amber-900">تُضاف الكميات للمستودع رسمياً عبر هذا السند فقط وترتبط بحساب التاجر وتكلفة البضاعة.</div>
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
         <div><label class="text-[11px] font-bold text-slate-600 block mb-1">التاجر (إلزامي) *</label><select id="ps" required class="inp w-full font-bold">${D.sup.map(s=>`<option value="${s.id}" ${s.id===preS?'selected':''}>${esc(s.name)}</option>`).join('')}</select></div>
-        ${lockedDateField('تاريخ الاستلام')}
+        ${lockedDateField('تاريخ الشراء والاستلام')}
       </div>
       <div class="rounded-xl border border-teal-200 bg-teal-50/40 p-2.5 space-y-2"><div class="flex justify-between"><span class="text-xs font-extrabold text-teal-900">اختر الأصناف المستلمة:</span><span id="pick-cnt" class="text-[11px] font-black px-2 rounded-full bg-teal-700 text-white num">0</span></div><input id="pick-search" autocomplete="off" oninput="pickQ=this.value;rPicker('pur')" placeholder="ابحث عن صنف..." class="inp w-full text-xs"/><div id="picker-list" class="grid grid-cols-2 sm:grid-cols-3 gap-1.5 max-h-36 overflow-y-auto"></div></div>
       <div id="rows" class="space-y-2"></div>
-      <div class="bg-teal-50 p-3 rounded-xl border border-teal-200 space-y-2">
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2"><div><label class="text-[11px] font-bold">دفعة فورية الآن</label><input id="ppd" type="number" min="0" step="any" value="0" oninput="calcPur()" class="inp w-full font-bold text-emerald-700 num"/></div><div><label class="text-[11px] font-bold">الوسيلة</label><select id="ppm" class="inp w-full text-xs font-bold">${PAYM.map(m=>`<option>${m}</option>`).join('')}</select></div><div><label class="text-[11px] font-bold">ملاحظة</label><input id="pnt" placeholder="رقم فاتورة التاجر أو ملاحظة..." class="inp w-full"/></div></div>
-        <div class="grid grid-cols-3 gap-2 text-center text-xs pt-2 border-t border-teal-200"><div><span class="text-slate-500 block">قيمة البضاعة</span><strong id="ptot">0</strong></div><div><span class="text-slate-500 block">الدفعة الآن</span><strong id="pspd" class="text-emerald-700">0</strong></div><div><span class="text-slate-500 block">المتبقي للتاجر</span><strong id="prem" class="text-amber-700">0</strong></div></div>
+      <div class="bg-teal-50 p-3 rounded-xl border border-teal-200 space-y-2.5">
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+          <div><label class="text-[11px] font-extrabold text-teal-900 block mb-1">طريقة الشراء *</label><select id="pst" onchange="calcPur()" class="inp w-full text-xs font-black"><option value="cash">نقدي بالكامل (إيصال دفع)</option><option value="debt">دين بالكامل (سند دين)</option><option value="partial">دفعة جزئية + سند دين</option></select></div>
+          <div id="ppm-wrap"><label class="text-[11px] font-bold text-slate-600 block mb-1">وسيلة الدفع</label><select id="ppm" class="inp w-full text-xs font-bold">${PAYM.map(m=>`<option>${m}</option>`).join('')}</select></div>
+          <div id="ppd-wrap"><label class="text-[11px] font-bold text-slate-600 block mb-1">المبلغ المدفوع الآن</label><input id="ppd" type="number" min="0" step="any" value="0" oninput="calcPur(1)" class="inp w-full font-bold text-emerald-700 num"/></div>
+        </div>
+        <div id="pur-mode-hint" class="text-[11px] font-extrabold px-2.5 py-1.5 rounded-lg bg-emerald-100 text-emerald-900">سيصدر إيصال شراء نقدي فوري دون فتح سند دين.</div>
+        <input id="pnt" placeholder="ملاحظة / رقم فاتورة التاجر (اختياري)..." class="inp w-full bg-white"/>
+        <div class="grid grid-cols-3 gap-2 text-center text-xs pt-2 border-t border-teal-200"><div><span class="text-slate-500 block">قيمة البضاعة</span><strong id="ptot">0</strong></div><div><span class="text-slate-500 block">المدفوع الآن</span><strong id="pspd" class="text-emerald-700">0</strong></div><div><span class="text-slate-500 block">قيمة سند الدين</span><strong id="prem" class="text-rose-700">0</strong></div></div>
       </div>
-      <div class="flex justify-end gap-2"><button type="button" onclick="closeM()" class="btn b-lt px-4 py-2">إلغاء</button><button class="btn b-tl px-5 py-2">اعتماد الاستلام الرسمي</button></div>
+      <div class="flex justify-end gap-2"><button type="button" onclick="closeM()" class="btn b-lt px-4 py-2">إلغاء</button><button id="pur-submit-btn" class="btn b-gn px-5 py-2">اعتماد وإصدار الإيصال</button></div>
     </form>`,'max-w-2xl');
   rPicker('pur');rRows('pur');calcPur();
 }
-function calcPur(){const tot=rn(draft.reduce((a,r)=>a+r.qty*r.pr,0)),pd=Math.max(0,Math.min(tot,Number($('ppd')?.value)||0));if($('ptot'))$('ptot').innerHTML=cf(tot);if($('pspd'))$('pspd').innerHTML=cf(pd);if($('prem'))$('prem').innerHTML=cf(rn(tot-pd));}
+function calcPur(man=0){
+  const tot=rn(draft.reduce((a,r)=>a+r.qty*r.pr,0)),st=$('pst'),pe=$('ppd'),hint=$('pur-mode-hint'),btn=$('pur-submit-btn');
+  if(!st||!pe)return;
+  let pd=Number(pe.value)||0;
+  if(!man){pd=st.value==='cash'?tot:st.value==='debt'?0:(pd>=tot?0:pd);pe.value=pd;pe.readOnly=(st.value!=='partial');}
+  else{pd=Math.max(0,Math.min(tot,pd));st.value=pd>=tot&&tot>0?'cash':pd<=0&&tot>0?'debt':'partial';}
+  const rem=rn(tot-pd);
+  $('ppm-wrap')?.classList.toggle('hidden',st.value==='debt');
+  $('ppd-wrap')?.classList.toggle('opacity-50',!man&&st.value!=='partial');
+  if(hint){
+    if(st.value==='cash'){hint.className='text-[11px] font-extrabold px-2.5 py-1.5 rounded-lg bg-emerald-100 text-emerald-900';hint.textContent='شراء نقدي: سيصدر إيصال دفع رسمي فوري بتفاصيل البضاعة دون سند دين.';}
+    else if(st.value==='debt'){hint.className='text-[11px] font-extrabold px-2.5 py-1.5 rounded-lg bg-rose-100 text-rose-900';hint.textContent=`شراء بالدين: سيُفتح سند دين رسمي رقم (${D.s.dnP+D.s.nDn}) في تبويب «سندات الدين» بقيمة ${cfp(tot)}.`;}
+    else{hint.className='text-[11px] font-extrabold px-2.5 py-1.5 rounded-lg bg-amber-100 text-amber-900';hint.textContent=`دفعة جزئية + دين: سيصدر إيصال بالمدفوع (${cfp(pd)}) + سند دين رقم (${D.s.dnP+D.s.nDn}) بالمتبقي (${cfp(rem)}).`;}
+  }
+  if(btn){btn.className=`btn ${st.value==='cash'?'b-gn':st.value==='debt'?'b-rd':'b-am'} px-5 py-2`;btn.textContent=st.value==='cash'?'اعتماد وإصدار الإيصال':st.value==='debt'?'اعتماد وإصدار سند الدين':'اعتماد الإيصال وسند الدين';}
+  if($('ptot'))$('ptot').innerHTML=cf(tot);if($('pspd'))$('pspd').innerHTML=cf(pd);if($('prem'))$('prem').innerHTML=cf(rem);
+}
 function savePur(e){
   e.preventDefault();if(!draft.length){toast('اختر صنفاً واحداً على الأقل','err');return;}
   const sid=$('ps').value,sup=byId(D.sup,sid);if(!sup){toast('يجب اختيار تاجر رسمي','err');return;}
-  const dt=today(),items=[];
+  const dt=today(),stVal=$('pst').value,items=[];
   for(const r of draft){const p=byId(D.prod,r.pid);if(!p||r.qty<=0){toast('تحقق من الكميات','err');return;}items.push({pid:p.id,name:p.name,qty:r.qty,pr:r.pr,tot:rn(r.qty*r.pr)});p.qty=rn((Number(p.qty)||0)+r.qty);p.qtyLocked=true;if(r.pr>0)p.cost=r.pr;}
-  const tot=rn(items.reduce((a,x)=>a+x.tot,0)),pd=Math.max(0,Math.min(tot,Number($('ppd').value)||0)),num=D.s.purP+D.s.nPur++,note=$('pnt')?.value.trim()||'';
-  const pur={id:uid('pur'),num,date:dt,sid,sname:sup.name,items,total:tot,note,...who(),ts:Date.now()};
+  const tot=rn(items.reduce((a,x)=>a+x.tot,0)),pd=stVal==='cash'?tot:stVal==='debt'?0:Math.max(0,Math.min(tot,Number($('ppd').value)||0)),rem=rn(tot-pd);
+  const payType=rem<=0?'cash':pd>0?'partial':'debt',num=D.s.purP+D.s.nPur++,bondNum=rem>0?(D.s.dnP+D.s.nDn++):null,note=$('pnt')?.value.trim()||'';
+  const pur={id:uid('pur'),num,bondNum,payType,date:dt,sid,sname:sup.name,items,total:tot,note,...who(),ts:Date.now()};
   D.pur.push(pur);
-  logAct('wh','استلام رسمي من تاجر',`استلام بضاعة من «${sup.name}» بقيمة ${cfp(tot)}`,num,{
-    summary:[['التاجر',sup.name],['تكلفة البضاعة',cfp(tot),'text-teal-800'],['دفعة فورية',cfp(pd),'text-emerald-700'],['المتبقي من السند',cfp(rn(tot-pd)),'text-amber-700']],
-    items,note,link:{type:'pur',id:pur.id}
-  });
+  let pv=null;
   if(pd>0){
     const pvNum=D.s.pvP+D.s.nPv++,pm=$('ppm').value;
-    const pv={id:uid('pv'),num:pvNum,sid,sname:sup.name,amt:pd,date:dt,m:pm,purId:pur.id,purNum:num,purTotal:tot,reason:'دفعة فورية عند استلام البضاعة',note:note||('دفعة مع سند '+num),items:clone(items),...who(),ts:Date.now()+1};
+    pv={id:uid('pv'),num:pvNum,sid,sname:sup.name,amt:pd,date:dt,m:pm,purId:pur.id,purNum:num,bondNum:bondNum||'',purTotal:tot,isCashPur:rem<=0,reason:rem<=0?'شراء بضاعة نقدي':'دفعة مقدمة مع سند دين',note:note||(rem<=0?'شراء نقدي '+num:'دفعة مع سند '+bondNum),items:clone(items),...who(),ts:Date.now()+1};
     D.spay.push(pv);
-    logAct('pay','دفع فوري لتاجر',`دفع ${cfp(pd)} لـ «${sup.name}» مقابل ${num} (قيمة البضاعة ${cfp(tot)})`,pvNum,{
-      summary:[['التاجر',sup.name],['المبلغ المدفوع',cfp(pd),'text-emerald-700'],['مقابل سند',num],['موقفة علينا البضاعة',cfp(tot),'text-indigo-800'],['المتبقي من السند',cfp(rn(tot-pd)),'text-amber-700'],['السبب',pv.reason]],
-      items,note:pv.note,link:{type:'pv',id:pv.id}
+  }
+  if(rem<=0){
+    logAct('wh','شراء نقدي من تاجر',`شراء نقدي من «${sup.name}» بقيمة ${cfp(tot)} (إيصال ${pv.num})`,pv.num,{
+      summary:[['التاجر',sup.name],['نوع العملية','شراء نقدي بالكامل'],['قيمة البضاعة',cfp(tot),'text-emerald-700'],['وسيلة الدفع',pv.m],['رقم الإيصال',pv.num]],
+      items,note,link:{type:'pv',id:pv.id}
+    });
+  }else{
+    logAct('wh','سند دين جديد لتاجر',`سند دين ${bondNum} للتاجر «${sup.name}» بقيمة بضاعة ${cfp(tot)} (متبقي ${cfp(rem)})`,bondNum,{
+      summary:[['التاجر (لمين)',sup.name],['رقم سند الدين',bondNum,'text-rose-700'],['موقفة علينا البضاعة',cfp(tot),'text-indigo-800'],['مدفوع مقدماً',cfp(pd),'text-emerald-700'],['المتبقي في السند',cfp(rem),'text-rose-600']],
+      items,note,link:{type:'bond',id:pur.id}
     });
   }
-  save();closeM();render();toast('تم الاستلام الرسمي ('+num+')');
+  save();closeM();render();
+  if(rem<=0&&pv){toast('تم الشراء النقدي وإصدار الإيصال '+pv.num);prevPv(pv.id);}
+  else{toast('تم إصدار سند الدين '+bondNum);prevDebtBond(pur.id);}
 }
 function delPur(id){
   if(!can('del')){toast('لا تملك الصلاحية','err');return;}const p=byId(D.pur,id);if(!p)return;
-  confirmM('حذف السند '+p.num,'ستُخصم الكميات من المستودع.',()=>{
+  confirmM('حذف '+(p.bondNum||'السند '+p.num),'ستُخصم الكميات من المستودع وتُحذف الإيصالات المرتبطة به.',()=>{
     (p.items||[]).forEach(x=>{const pr=byId(D.prod,x.pid);if(pr)pr.qty=Math.max(0,rn((Number(pr.qty)||0)-(Number(x.qty)||0)));});
+    D.spay=D.spay.filter(x=>x.purId!==id);
     D.pur=D.pur.filter(x=>x.id!==id);
-    logAct('wh','حذف سند استلام',`حذف سند ${p.num} من التاجر «${p.sname}» بقيمة ${cfp(p.total)}`,p.num,{summary:[['التاجر',p.sname],['القيمة',cfp(p.total),'text-rose-600']],items:p.items||[]});
+    logAct('wh','حذف سند شراء/دين',`حذف ${p.bondNum||p.num} للتاجر «${p.sname}» بقيمة ${cfp(p.total)}`,p.bondNum||p.num,{summary:[['التاجر',p.sname],['القيمة',cfp(p.total),'text-rose-600']],items:p.items||[]});
     save();render();toast('تم الحذف');
   });
+}
+
+function prevDebtBond(id){
+  const p=byId(D.pur,id);if(!p)return;
+  const s=p.sid?byId(D.sup,p.sid):null,bal=s?sStats(s.id).bal:null,pd=purPaid(p.id),rm=purRem(p),pays=D.spay.filter(x=>x.purId===p.id).sort((a,b)=>(a.ts||0)-(b.ts||0));
+  const bCode=p.bondNum||p.num;
+  const waMsg=`*${bName()}*\nسند دين لتاجر: *${bCode}*\nلمين (التاجر): *${p.sname}*\nالتاريخ: ${fmtDate(p.date)}\nحق البضاعة:\n${(p.items||[]).map(x=>`- ${x.name}: ${nf(x.qty)} × ${cfp(x.pr)} = ${cfp(x.tot)}`).join('\n')}\n------------------\nإجمالي البضاعة: *${cfp(p.total)}*\nالمدفوع منها: ${cfp(pd)}\n*المتبقي في السند: ${cfp(rm)}*`;
+  docModal(`سند دين - ${bCode}`,`${docHead('سند دين رسمي لتاجر','SUPPLIER DEBT BOND',`<div class="flex justify-between"><span>رقم السند:</span><strong class="num">${esc(bCode)}</strong></div><div class="flex justify-between"><span>التاريخ:</span><strong class="num">${esc(fmtDate(p.date))}</strong></div><div class="flex justify-between"><span>الحالة:</span><strong>${rm>0?'دين قائم':'مسدد بالكامل'}</strong></div>`,'bg-gradient-to-l from-rose-950 via-rose-800 to-amber-800','bg-white/10')}
+  <div class="px-4 py-3.5 space-y-3 bg-rose-50/25">
+    <div class="rounded-xl border border-rose-200 bg-white p-3 flex justify-between items-center gap-2">
+      <div><div class="text-[10px] text-rose-700 font-extrabold">لمين (التاجر الدائن)</div><div class="text-base font-black text-slate-900">${esc(p.sname)}</div>${s?.phone?`<div class="text-[10px] text-slate-500 num">${esc(s.phone)}</div>`:''}</div>
+      <div class="text-left"><div class="text-[10px] text-slate-500 font-bold">مرجع الشراء</div><div class="text-xs font-black num text-slate-800">${esc(p.num)}</div>${bal!==null?`<div class="text-[10px] text-amber-800 font-bold mt-0.5">إجمالي رصيده: ${cf(bal)}</div>`:''}</div>
+    </div>
+    <div class="rounded-lg border overflow-hidden bg-white">
+      <div class="px-2.5 py-1.5 bg-rose-900 text-white text-[10px] font-extrabold">حق شو (تفاصيل البضاعة المستلمة وتكلفتها)</div>
+      <table class="w-full text-[10px] text-right table-fixed"><thead><tr class="bg-slate-100 text-slate-700"><th class="p-1.5 w-[8%] text-center">#</th><th class="p-1.5 w-[44%]">الصنف</th><th class="p-1.5 w-[13%] text-center">العدد</th><th class="p-1.5 w-[17%] text-center">التكلفة</th><th class="p-1.5 w-[18%] text-left">موقف علينا</th></tr></thead>
+      <tbody class="divide-y">${(p.items||[]).map((x,n)=>`<tr><td class="p-1.5 text-center num">${n+1}</td><td class="p-1.5 font-bold">${esc(x.name)}</td><td class="p-1.5 text-center num">${nf(x.qty)}</td><td class="p-1.5 text-center num">${cfp(x.pr)}</td><td class="p-1.5 text-left font-black text-rose-800 num">${cfp(x.tot)}</td></tr>`).join('')}</tbody></table>
+    </div>
+    <div class="grid grid-cols-3 gap-2 text-center text-xs">
+      <div class="rounded-lg bg-slate-900 text-white p-2"><span class="text-[9px] text-slate-300 block">قيمة البضاعة</span><strong>${cf(p.total)}</strong></div>
+      <div class="rounded-lg bg-emerald-50 border border-emerald-200 p-2"><span class="text-[9px] text-emerald-700 block">المدفوع من السند</span><strong class="text-emerald-800">${cf(pd)}</strong></div>
+      <div class="rounded-lg ${rm>0?'bg-rose-700 text-white':'bg-emerald-700 text-white'} p-2"><span class="text-[9px] opacity-85 block">المتبقي في السند</span><strong>${cf(rm)}</strong></div>
+    </div>
+    ${pays.length?`<div class="rounded-lg border bg-white overflow-hidden"><div class="px-2.5 py-1.5 bg-emerald-800 text-white text-[10px] font-extrabold">الدفعات المسددة على هذا السند (${pays.length})</div><div class="divide-y text-[10px]">${pays.map(x=>`<div class="p-2 flex justify-between items-center"><div><strong class="num text-emerald-800">${esc(x.num)}</strong> • <span class="num">${esc(fmtDate(x.date))}</span> • ${esc(x.m||'كاش')} ${x.reason?'• '+esc(x.reason):''}</div><strong class="text-emerald-700">${cf(x.amt)}</strong></div>`).join('')}</div></div>`:''}
+    ${p.note?`<div class="rounded-lg border bg-amber-50 p-2 text-[11px]"><strong>ملاحظة:</strong> ${esc(p.note)}</div>`:''}
+  </div>`,{ph:s?.phone||'',msg:waMsg},'bg-rose-950');
 }
 
 function openSpayModal(preS='',prePurId=''){
   if(!D.sup.length){toast('أضف تاجراً أولاً','warn');return;}
   const sid=preS||D.sup[0].id;
-  modal(`<div class="p-4 border-b flex justify-between bg-amber-600 text-white"><h3 class="font-extrabold">إيصال دفع لتاجر (<span class="num">${esc(D.s.pvP+D.s.nPv)}</span>)</h3><button onclick="closeM()" class="cursor-pointer">×</button></div>
+  modal(`<div class="p-4 border-b flex justify-between bg-amber-600 text-white"><h3 class="font-extrabold">سداد سند دين / دفع لتاجر (<span class="num">${esc(D.s.pvP+D.s.nPv)}</span>)</h3><button onclick="closeM()" class="cursor-pointer">×</button></div>
     <form onsubmit="saveSpay(event)" class="p-4 space-y-3 max-h-[85vh] overflow-y-auto">
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
         <div><label class="text-[11px] font-bold text-slate-600 block mb-1">اختر التاجر *</label><select id="sc" onchange="rSpayContext('')" class="inp w-full font-bold">${D.sup.map(s=>`<option value="${s.id}" ${s.id===sid?'selected':''}>${esc(s.name)} (متبقي له: ${nf(sStats(s.id).bal)})</option>`).join('')}</select></div>
@@ -913,8 +1068,8 @@ function openSpayModal(preS='',prePurId=''){
       </div>
       <div id="spay-sup-summary" class="grid grid-cols-3 gap-2 text-center text-xs"></div>
       <div>
-        <label class="text-[11px] font-extrabold text-indigo-900 block mb-1">حق شو عم تدفع؟ (اختر سند الشراء / البضاعة)</label>
-        <select id="sp-pur" onchange="rSpayPurDetails()" class="inp w-full bg-indigo-50/60 border-indigo-300 font-bold text-xs"></select>
+        <label class="text-[11px] font-extrabold text-rose-900 block mb-1">حق شو عم تدفع؟ (اختر سند الدين)</label>
+        <select id="sp-pur" onchange="rSpayPurDetails()" class="inp w-full bg-rose-50/50 border-rose-300 font-bold text-xs"></select>
       </div>
       <div id="spay-pur-box"></div>
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
@@ -923,23 +1078,23 @@ function openSpayModal(preS='',prePurId=''){
       </div>
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
         <div><label class="text-[11px] font-bold text-amber-900 block mb-1">المبلغ المدفوع الآن *</label><input id="sa2" type="number" min="0.01" step="any" required placeholder="المبلغ *" class="inp w-full font-black text-amber-700 bg-amber-50/40 border-amber-300 num"/></div>
-        <div><label class="text-[11px] font-bold text-slate-600 block mb-1">تفاصيل إضافية (اختياري)</label><input id="sn2" placeholder="مثال: دفعة ثانية من بضاعة الزجاج..." class="inp w-full"/></div>
+        <div><label class="text-[11px] font-bold text-slate-600 block mb-1">تفاصيل إضافية (اختياري)</label><input id="sn2" placeholder="مثال: دفعة ثانية من سند الدين..." class="inp w-full"/></div>
       </div>
-      <div class="flex justify-end gap-2 pt-1"><button type="button" onclick="closeM()" class="btn b-lt px-4 py-2">إلغاء</button><button class="btn b-am px-5 py-2">اعتماد الدفع وإصدار الإيصال</button></div>
+      <div class="flex justify-end gap-2 pt-1"><button type="button" onclick="closeM()" class="btn b-lt px-4 py-2">إلغاء</button><button class="btn b-am px-5 py-2">اعتماد السداد وإصدار الإيصال</button></div>
     </form>`,'max-w-2xl');
   rSpayContext(prePurId);
 }
 function rSpayContext(prePurId=''){
   const sid=$('sc')?.value;if(!sid)return;
-  const st=sStats(sid),purs=D.pur.filter(p=>p.sid===sid).sort((a,b)=>(b.ts||0)-(a.ts||0));
+  const st=sStats(sid),bonds=debtBonds(sid);
   const sumEl=$('spay-sup-summary');
   if(sumEl)sumEl.innerHTML=`<div class="rounded-xl bg-indigo-50 border border-indigo-200 p-2"><span class="text-[10px] text-indigo-700 font-bold block">إجمالي البضاعة منه</span><strong class="text-indigo-900">${cf(st.tot)}</strong></div>
     <div class="rounded-xl bg-emerald-50 border border-emerald-200 p-2"><span class="text-[10px] text-emerald-700 font-bold block">مدفوع له سابقاً</span><strong class="text-emerald-700">${cf(st.paid)}</strong></div>
     <div class="rounded-xl bg-amber-50 border border-amber-300 p-2"><span class="text-[10px] text-amber-900 font-bold block">المتبقي الكلي له</span><strong class="text-amber-800">${cf(st.bal)}</strong></div>`;
   const sel=$('sp-pur');
   if(sel){
-    const openFirst=prePurId||purs.find(p=>purRem(p)>0)?.id||'';
-    sel.innerHTML=`${purs.map(p=>{const rm=purRem(p),itTxt=(p.items||[]).map(x=>x.name).slice(0,2).join('، ');return`<option value="${p.id}" ${p.id===openFirst?'selected':''}>${esc(p.num)} (${fmtDate(p.date)}) — موقفة علينا: ${cfp(p.total)} | متبقي: ${cfp(rm)} ${itTxt?'— '+esc(itTxt):''}</option>`;}).join('')}<option value="" ${!openFirst?'selected':''}>دفعة عامة على حساب التاجر (رصيد سابق / بدون سند محدد)</option>`;
+    const openFirst=prePurId||bonds.find(p=>purRem(p)>0)?.id||'';
+    sel.innerHTML=`${bonds.map(p=>{const rm=purRem(p),itTxt=(p.items||[]).map(x=>x.name).slice(0,2).join('، ');return`<option value="${p.id}" ${p.id===openFirst?'selected':''}>سند ${esc(p.bondNum||p.num)} (${fmtDate(p.date)}) — موقفة علينا: ${cfp(p.total)} | متبقي: ${cfp(rm)} ${itTxt?'— '+esc(itTxt):''}</option>`;}).join('')}<option value="" ${!openFirst?'selected':''}>دفعة عامة على حساب التاجر (رصيد سابق / بدون سند محدد)</option>`;
   }
   rSpayPurDetails();
 }
@@ -955,9 +1110,9 @@ function rSpayPurDetails(){
   }
   const pd=purPaid(p.id),rm=purRem(p);
   if(amtEl)amtEl.value=rm>0?rm:'';
-  box.innerHTML=`<div class="rounded-xl border-2 border-indigo-200 bg-indigo-50/40 p-3 space-y-2.5">
+  box.innerHTML=`<div class="rounded-xl border-2 border-rose-200 bg-rose-50/40 p-3 space-y-2.5">
     <div class="flex items-center justify-between flex-wrap gap-1.5">
-      <div class="text-xs font-black text-indigo-950">تفاصيل البضاعة في السند <span class="num text-indigo-700">${esc(p.num)}</span> <span class="text-[10px] font-bold text-slate-500 num">(${fmtDate(p.date)})</span></div>
+      <div class="text-xs font-black text-rose-950">سند الدين <span class="num text-rose-700">${esc(p.bondNum||p.num)}</span> <span class="text-[10px] font-bold text-slate-500 num">(${fmtDate(p.date)})</span></div>
       <span class="px-2 py-0.5 rounded-full text-[10px] font-black ${rm<=0?'bg-emerald-100 text-emerald-800':'bg-rose-100 text-rose-800'}">${rm<=0?'مسدد بالكامل':'متبقي عليك: '+cfp(rm)}</span>
     </div>
     <div class="grid grid-cols-3 gap-2 text-center text-xs">
@@ -966,8 +1121,8 @@ function rSpayPurDetails(){
       <div class="bg-white rounded-lg border border-rose-200 p-2"><span class="text-[10px] text-slate-500 block">المتبقي من السند</span><strong class="text-rose-700">${cf(rm)}</strong></div>
     </div>
     <div class="rounded-lg border bg-white overflow-hidden">
-      <table class="w-full text-[11px] text-right"><thead class="bg-indigo-900 text-white text-[10px]"><tr><th class="p-1.5">الصنف (حق شو الدفع)</th><th class="p-1.5 text-center">الكمية</th><th class="p-1.5 text-center">التكلفة</th><th class="p-1.5 text-left">موقف عليك</th></tr></thead>
-      <tbody class="divide-y">${(p.items||[]).map(x=>`<tr><td class="p-1.5 font-bold">${esc(x.name)}</td><td class="p-1.5 text-center num font-bold">${nf(x.qty)}</td><td class="p-1.5 text-center num">${cfp(x.pr)}</td><td class="p-1.5 text-left num font-black text-indigo-800">${cfp(x.tot)}</td></tr>`).join('')}</tbody></table>
+      <table class="w-full text-[11px] text-right"><thead class="bg-rose-900 text-white text-[10px]"><tr><th class="p-1.5">الصنف (حق شو الدفع)</th><th class="p-1.5 text-center">الكمية</th><th class="p-1.5 text-center">التكلفة</th><th class="p-1.5 text-left">موقف عليك</th></tr></thead>
+      <tbody class="divide-y">${(p.items||[]).map(x=>`<tr><td class="p-1.5 font-bold">${esc(x.name)}</td><td class="p-1.5 text-center num font-bold">${nf(x.qty)}</td><td class="p-1.5 text-center num">${cfp(x.pr)}</td><td class="p-1.5 text-left num font-black text-rose-800">${cfp(x.tot)}</td></tr>`).join('')}</tbody></table>
     </div>
   </div>`;
 }
@@ -975,40 +1130,45 @@ function saveSpay(e){
   e.preventDefault();const sid=$('sc').value,amt=Number($('sa2').value)||0;if(!sid||amt<=0)return;
   const sup=byId(D.sup,sid),pid=$('sp-pur')?.value||'',pur=pid?byId(D.pur,pid):null;
   const num=D.s.pvP+D.s.nPv++,m=$('sm2').value,reason=$('sp-rsn').value,note=$('sn2').value.trim();
-  const p={id:uid('pv'),num,sid,sname:sup?.name||'',amt,date:today(),m,purId:pur?pur.id:null,purNum:pur?pur.num:'',purTotal:pur?Number(pur.total)||0:0,reason,note,items:pur?clone(pur.items||[]):[],...who(),ts:Date.now()};
+  const p={id:uid('pv'),num,sid,sname:sup?.name||'',amt,date:today(),m,purId:pur?pur.id:null,purNum:pur?pur.num:'',bondNum:pur?(pur.bondNum||''):'',purTotal:pur?Number(pur.total)||0:0,isCashPur:false,reason,note,items:pur?clone(pur.items||[]):[],...who(),ts:Date.now()};
   D.spay.push(p);
   const newSupBal=sStats(sid).bal,purLeft=pur?purRem(pur):null;
-  logAct('pay','دفع لتاجر',`دفع ${cfp(amt)} لـ «${p.sname}» (${reason})${pur?' — مقابل '+pur.num:''}`,num,{
-    summary:[['التاجر',p.sname],['المبلغ المدفوع',cfp(amt),'text-amber-700'],['سبب الدفع',reason],['وسيلة الدفع',m],...(pur?[['مقابل بضاعة السند',pur.num],['موقفة علينا البضاعة',cfp(pur.total),'text-indigo-800'],['المتبقي من السند',cfp(purLeft),purLeft>0?'text-rose-600':'text-emerald-700']]:[]),['المتبقي الكلي للتاجر',cfp(newSupBal)]],
+  logAct('pay','سداد سند دين لتاجر',`دفع ${cfp(amt)} لـ «${p.sname}» (${reason})${pur?' — سند '+(pur.bondNum||pur.num):''}`,num,{
+    summary:[['التاجر',p.sname],['المبلغ المدفوع',cfp(amt),'text-amber-700'],['سبب الدفع',reason],['وسيلة الدفع',m],...(pur?[['رقم سند الدين',pur.bondNum||pur.num,'text-rose-700'],['موقفة علينا البضاعة',cfp(pur.total),'text-indigo-800'],['المتبقي من السند',cfp(purLeft),purLeft>0?'text-rose-600':'text-emerald-700']]:[]),['المتبقي الكلي للتاجر',cfp(newSupBal)]],
     items:p.items,note,link:{type:'pv',id:p.id}
   });
-  save();closeM();render();toast('تم الدفع وإصدار الإيصال '+num);prevPv(p.id);
+  save();closeM();render();toast('تم السداد وإصدار الإيصال '+num);prevPv(p.id);
 }
-function delSpay(id){if(!can('del')){toast('لا تملك الصلاحية','err');return;}const p=byId(D.spay,id);if(!p)return;confirmM('حذف إيصال الدفع','سيُعاد المبلغ لحساب التاجر.',()=>{D.spay=D.spay.filter(x=>x.id!==id);logAct('pay','حذف إيصال دفع',`حذف دفع ${cfp(p.amt)} للتاجر «${p.sname}»`,p.num,{summary:[['التاجر',p.sname],['المبلغ المحذوف',cfp(p.amt),'text-rose-600']]});save();render();toast('تم الحذف');});}
+function delSpay(id){if(!can('del')){toast('لا تملك الصلاحية','err');return;}const p=byId(D.spay,id);if(!p)return;confirmM('حذف إيصال الدفع','سيُعاد المبلغ لحساب التاجر وسند الدين.',()=>{D.spay=D.spay.filter(x=>x.id!==id);logAct('pay','حذف إيصال دفع',`حذف دفع ${cfp(p.amt)} للتاجر «${p.sname}»`,p.num,{summary:[['التاجر',p.sname],['المبلغ المحذوف',cfp(p.amt),'text-rose-600']]});save();render();toast('تم الحذف');});}
 function prevPur(id){
-  const p=byId(D.pur,id);if(!p)return;const s=p.sid?byId(D.sup,p.sid):null,bal=s?sStats(s.id).bal:null,pd=purPaid(p.id),rm=purRem(p);
-  docModal(`استلام - ${p.num}`,`${docHead('سند شراء / استلام رسمي','PURCHASE RECEIPT',`<div class="flex justify-between"><span>الرقم:</span><strong class="num">${esc(p.num)}</strong></div><div class="flex justify-between"><span>التاريخ:</span><strong class="num">${esc(fmtDate(p.date))}</strong></div>`,'bg-gradient-to-l from-teal-950 via-teal-800 to-teal-600','bg-white/10')}
-  <div class="px-4 py-3 space-y-2.5 bg-teal-50/25"><div class="rounded-lg border bg-white p-2.5 flex justify-between"><div><div class="text-[9px] text-teal-700 font-extrabold">التاجر المورّد</div><div class="text-sm font-black">${esc(p.sname)}</div></div>${bal!==null?`<div class="text-left text-[10px]"><span>الرصيد الكلي له</span><strong class="block text-amber-700">${cf(bal)}</strong></div>`:''}</div>
-    <div class="rounded-lg border overflow-hidden bg-white"><table class="w-full text-[10px] text-right table-fixed"><thead><tr class="bg-teal-900 text-white"><th class="p-1.5 w-[8%] text-center">#</th><th class="p-1.5 w-[44%]">الصنف</th><th class="p-1.5 w-[13%] text-center">العدد</th><th class="p-1.5 w-[17%] text-center">سعر التكلفة</th><th class="p-1.5 w-[18%] text-left">الإجمالي</th></tr></thead><tbody class="divide-y">${(p.items||[]).map((x,n)=>`<tr><td class="p-1.5 text-center"><span class="num">${n+1}</span></td><td class="p-1.5 font-bold">${esc(x.name)}</td><td class="p-1.5 text-center"><span class="num">${nf(x.qty)}</span></td><td class="p-1.5 text-center"><span class="num">${cfp(x.pr)}</span></td><td class="p-1.5 text-left font-extrabold"><span class="num">${cfp(x.tot)}</span></td></tr>`).join('')}</tbody></table></div>
-    <div class="grid grid-cols-3 gap-2 text-center text-xs"><div class="rounded-lg bg-teal-900 text-white p-2"><span class="text-[9px] text-teal-200 block">تكلفة البضاعة</span><strong>${cf(p.total)}</strong></div><div class="rounded-lg bg-emerald-50 border border-emerald-200 p-2"><span class="text-[9px] text-emerald-700 block">المدفوع من السند</span><strong class="text-emerald-800">${cf(pd)}</strong></div><div class="rounded-lg bg-amber-50 border border-amber-200 p-2"><span class="text-[9px] text-amber-800 block">المتبقي من السند</span><strong class="text-amber-800">${cf(rm)}</strong></div></div></div>`,{ph:s?.phone||'',msg:`*${bName()}*\nسند استلام: *${p.num}*\nالتاريخ: ${fmtDate(p.date)}\nالإجمالي: *${cfp(p.total)}*\nالمدفوع: ${cfp(pd)}\nالمتبقي: *${cfp(rm)}*`},'bg-teal-950');
+  const p=byId(D.pur,id);if(!p)return;
+  if(p.bondNum){prevDebtBond(id);return;}
+  const pv=D.spay.find(x=>x.purId===id);
+  if(pv){prevPv(pv.id);return;}
+  const s=p.sid?byId(D.sup,p.sid):null;
+  docModal(`شراء - ${p.num}`,`${docHead('سند شراء بضاعة','PURCHASE RECEIPT',`<div class="flex justify-between"><span>الرقم:</span><strong class="num">${esc(p.num)}</strong></div><div class="flex justify-between"><span>التاريخ:</span><strong class="num">${esc(fmtDate(p.date))}</strong></div>`,'bg-gradient-to-l from-teal-950 via-teal-800 to-teal-600','bg-white/10')}
+  <div class="px-4 py-3 space-y-2.5 bg-teal-50/25"><div class="rounded-lg border bg-white p-2.5"><div class="text-[9px] text-teal-700 font-extrabold">التاجر</div><div class="text-sm font-black">${esc(p.sname)}</div></div>
+    <div class="rounded-lg border overflow-hidden bg-white"><table class="w-full text-[10px] text-right table-fixed"><thead><tr class="bg-teal-900 text-white"><th class="p-1.5 w-[8%] text-center">#</th><th class="p-1.5 w-[44%]">الصنف</th><th class="p-1.5 w-[13%] text-center">العدد</th><th class="p-1.5 w-[17%] text-center">التكلفة</th><th class="p-1.5 w-[18%] text-left">الإجمالي</th></tr></thead><tbody class="divide-y">${(p.items||[]).map((x,n)=>`<tr><td class="p-1.5 text-center num">${n+1}</td><td class="p-1.5 font-bold">${esc(x.name)}</td><td class="p-1.5 text-center num">${nf(x.qty)}</td><td class="p-1.5 text-center num">${cfp(x.pr)}</td><td class="p-1.5 text-left font-extrabold num">${cfp(x.tot)}</td></tr>`).join('')}</tbody></table></div>
+    <div class="rounded-lg bg-teal-900 text-white p-2.5 flex justify-between"><span class="text-xs font-bold">الإجمالي</span><span class="text-base font-black">${cf(p.total)}</span></div></div>`,{ph:s?.phone||'',msg:`*${bName()}*\nسند شراء: *${p.num}*\nالإجمالي: *${cfp(p.total)}*`},'bg-teal-950');
 }
 function prevPv(id){
   const p=byId(D.spay,id);if(!p)return;const s=byId(D.sup,p.sid),bal=s?sStats(s.id).bal:null,pur=p.purId?byId(D.pur,p.purId):null,items=p.items?.length?p.items:(pur?.items||[]),pTot=pur?Number(pur.total)||0:(Number(p.purTotal)||0),pPaid=pur?purPaid(pur.id):null,pRem=pur?purRem(pur):null;
-  const waMsg=`*${bName()}*\nإيصال دفع لتاجر: *${p.num}*\nالتاريخ: ${fmtDate(p.date)}\nللتاجر: ${s?s.name:p.sname}\nالمبلغ المدفوع: *${cfp(p.amt)}*${p.reason?`\nالسبب: ${p.reason}`:''}${p.purNum?`\nمقابل بضاعة السند: ${p.purNum} (موقفة علينا: ${cfp(pTot)})`:''}${bal!==null?`\nالمتبقي الكلي لكم: *${cfp(bal)}*`:''}`;
-  docModal(`إيصال دفع - ${p.num||'PV'}`,`${docHead('إيصال دفع لتاجر','PAYMENT VOUCHER',`<div class="flex justify-between"><span>السند:</span><strong class="num">${esc(p.num||'PV')}</strong></div><div class="flex justify-between"><span>التاريخ:</span><strong class="num">${esc(fmtDate(p.date))}</strong></div>`,'bg-gradient-to-l from-amber-950 via-amber-700 to-orange-600','bg-white/10')}
-  <div class="px-4 py-3.5 space-y-3 bg-amber-50/35">
-    <div class="rounded-xl bg-amber-600 text-white p-3.5 flex justify-between items-center"><div><div class="text-[10px] text-amber-100">المبلغ المدفوع</div><div class="text-2xl font-black">${cf(p.amt)}</div></div><span class="px-3 py-1 rounded-lg bg-white text-amber-800 text-xs font-black">تم الدفع</span></div>
+  const isCash=!!p.isCashPur,hdrTitle=isCash?'إيصال شراء نقدي من تاجر':'إيصال سداد دين لتاجر',hdrBg=isCash?'bg-gradient-to-l from-emerald-950 via-emerald-800 to-teal-600':'bg-gradient-to-l from-amber-950 via-amber-700 to-orange-600',barBg=isCash?'bg-emerald-950':'bg-amber-950';
+  const waMsg=`*${bName()}*\n${hdrTitle}: *${p.num}*\nالتاريخ: ${fmtDate(p.date)}\nللتاجر: ${s?s.name:p.sname}\nالمبلغ المدفوع: *${cfp(p.amt)}*${p.reason?`\nالسبب: ${p.reason}`:''}${p.bondNum?`\nسداد سند الدين: ${p.bondNum} (موقفة علينا: ${cfp(pTot)})`:''}${bal!==null?`\nالمتبقي الكلي لكم: *${cfp(bal)}*`:''}`;
+  docModal(`${hdrTitle} - ${p.num||'PV'}`,`${docHead(hdrTitle,isCash?'CASH PURCHASE RECEIPT':'DEBT PAYMENT VOUCHER',`<div class="flex justify-between"><span>الإيصال:</span><strong class="num">${esc(p.num||'PV')}</strong></div><div class="flex justify-between"><span>التاريخ:</span><strong class="num">${esc(fmtDate(p.date))}</strong></div>`,hdrBg,'bg-white/10')}
+  <div class="px-4 py-3.5 space-y-3 ${isCash?'bg-emerald-50/30':'bg-amber-50/35'}">
+    <div class="rounded-xl ${isCash?'bg-emerald-700':'bg-amber-600'} text-white p-3.5 flex justify-between items-center"><div><div class="text-[10px] opacity-85">المبلغ المدفوع</div><div class="text-2xl font-black">${cf(p.amt)}</div></div><span class="px-3 py-1 rounded-lg bg-white ${isCash?'text-emerald-800':'text-amber-800'} text-xs font-black">${isCash?'نقدي بالكامل':'تم الدفع'}</span></div>
     <div class="rounded-lg border divide-y text-xs bg-white">
-      <div class="grid grid-cols-12 p-2"><span class="col-span-4 text-amber-900 font-bold">للتاجر</span><strong class="col-span-8">${esc(s?s.name:p.sname||'')}</strong></div>
-      <div class="grid grid-cols-12 p-2 bg-amber-50/40"><span class="col-span-4 text-amber-900 font-bold">سبب الدفع</span><strong class="col-span-8 text-slate-900">${esc(p.reason||'دفعة على الحساب')}</strong></div>
-      ${p.purNum?`<div class="grid grid-cols-12 p-2"><span class="col-span-4 text-amber-900 font-bold">مقابل البضاعة</span><strong class="col-span-8 text-indigo-800">سند <span class="num">${esc(p.purNum)}</span> — موقفة علينا: ${cf(pTot)}</strong></div>`:''}
-      ${pRem!==null?`<div class="grid grid-cols-12 p-2 bg-indigo-50/40"><span class="col-span-4 text-indigo-900 font-bold">حالة السند</span><span class="col-span-8 font-bold">إجمالي المدفوع: <strong class="text-emerald-700">${cf(pPaid)}</strong> • المتبقي منه: <strong class="${pRem>0?'text-rose-600':'text-emerald-700'}">${cf(pRem)}</strong></span></div>`:''}
-      <div class="grid grid-cols-12 p-2"><span class="col-span-4 text-amber-900 font-bold">الوسيلة</span><strong class="col-span-8">${esc(p.m||'كاش')}</strong></div>
-      ${p.note?`<div class="grid grid-cols-12 p-2 bg-amber-50/40"><span class="col-span-4 text-amber-900 font-bold">ملاحظة</span><span class="col-span-8">${esc(p.note)}</span></div>`:''}
-      ${bal!==null?`<div class="grid grid-cols-12 p-2"><span class="col-span-4 text-amber-900 font-bold">المتبقي الكلي له</span><strong class="col-span-8 text-amber-700">${cf(bal)}</strong></div>`:''}
+      <div class="grid grid-cols-12 p-2"><span class="col-span-4 text-slate-600 font-bold">للتاجر</span><strong class="col-span-8">${esc(s?s.name:p.sname||'')}</strong></div>
+      <div class="grid grid-cols-12 p-2 bg-slate-50/60"><span class="col-span-4 text-slate-600 font-bold">السبب</span><strong class="col-span-8 text-slate-900">${esc(p.reason||'دفعة على الحساب')}</strong></div>
+      ${p.bondNum?`<div class="grid grid-cols-12 p-2"><span class="col-span-4 text-rose-800 font-bold">سند الدين</span><strong class="col-span-8 text-rose-800"><span class="num">${esc(p.bondNum)}</span> — موقفة علينا: ${cf(pTot)}</strong></div>`:p.purNum?`<div class="grid grid-cols-12 p-2"><span class="col-span-4 text-emerald-800 font-bold">مرجع الشراء</span><strong class="col-span-8 num">${esc(p.purNum)}</strong></div>`:''}
+      ${!isCash&&pRem!==null?`<div class="grid grid-cols-12 p-2 bg-indigo-50/40"><span class="col-span-4 text-indigo-900 font-bold">حالة السند</span><span class="col-span-8 font-bold">إجمالي المدفوع: <strong class="text-emerald-700">${cf(pPaid)}</strong> • المتبقي: <strong class="${pRem>0?'text-rose-600':'text-emerald-700'}">${cf(pRem)}</strong></span></div>`:''}
+      <div class="grid grid-cols-12 p-2"><span class="col-span-4 text-slate-600 font-bold">الوسيلة</span><strong class="col-span-8">${esc(p.m||'كاش')}</strong></div>
+      ${p.note?`<div class="grid grid-cols-12 p-2 bg-slate-50/60"><span class="col-span-4 text-slate-600 font-bold">ملاحظة</span><span class="col-span-8">${esc(p.note)}</span></div>`:''}
+      ${bal!==null?`<div class="grid grid-cols-12 p-2"><span class="col-span-4 text-slate-600 font-bold">المتبقي الكلي له</span><strong class="col-span-8 ${bal>0?'text-amber-700':'text-emerald-700'}">${cf(bal)}</strong></div>`:''}
     </div>
-    ${items.length?`<div class="rounded-lg border overflow-hidden bg-white"><div class="px-2.5 py-1.5 bg-indigo-900 text-white text-[10px] font-extrabold">تفاصيل البضاعة المدفوع مقابلها</div><table class="w-full text-[10px] text-right"><thead><tr class="bg-slate-100 text-slate-700"><th class="p-1.5">الصنف</th><th class="p-1.5 text-center">العدد</th><th class="p-1.5 text-center">التكلفة</th><th class="p-1.5 text-left">موقف علينا</th></tr></thead><tbody class="divide-y">${items.map(x=>`<tr><td class="p-1.5 font-bold">${esc(x.name)}</td><td class="p-1.5 text-center num">${nf(x.qty)}</td><td class="p-1.5 text-center num">${cfp(x.pr)}</td><td class="p-1.5 text-left font-black text-indigo-800 num">${cfp(x.tot)}</td></tr>`).join('')}</tbody></table></div>`:''}
-  </div>`,{ph:s?.phone||'',msg:waMsg},'bg-amber-950');
+    ${items.length?`<div class="rounded-lg border overflow-hidden bg-white"><div class="px-2.5 py-1.5 ${isCash?'bg-emerald-900':'bg-indigo-900'} text-white text-[10px] font-extrabold">تفاصيل البضاعة المدفوع مقابلها</div><table class="w-full text-[10px] text-right"><thead><tr class="bg-slate-100 text-slate-700"><th class="p-1.5">الصنف</th><th class="p-1.5 text-center">العدد</th><th class="p-1.5 text-center">التكلفة</th><th class="p-1.5 text-left">موقف علينا</th></tr></thead><tbody class="divide-y">${items.map(x=>`<tr><td class="p-1.5 font-bold">${esc(x.name)}</td><td class="p-1.5 text-center num">${nf(x.qty)}</td><td class="p-1.5 text-center num">${cfp(x.pr)}</td><td class="p-1.5 text-left font-black text-indigo-800 num">${cfp(x.tot)}</td></tr>`).join('')}</tbody></table></div>`:''}
+  </div>`,{ph:s?.phone||'',msg:waMsg},barBg);
 }
 function prevSStmt(id){
   const s=byId(D.sup,id);if(!s)return;const L=sLedger(id),st=sStats(id),tcr=L.reduce((a,x)=>a+x.cr,0),tdr=L.reduce((a,x)=>a+x.dr,0);
@@ -1020,14 +1180,14 @@ function prevSStmt(id){
 function vWhShell(){
   const s=dashStats();
   return `<div class="grid grid-cols-3 gap-3"><div class="card p-3.5 border-r-4 border-teal-600"><div class="text-xs text-slate-500">الأصناف</div><div class="text-lg font-black mt-1 num">${D.prod.length}</div></div><div class="card p-3.5 border-r-4 border-blue-600"><div class="text-xs text-slate-500">التكلفة</div><div class="text-lg font-black text-blue-700 mt-1">${cf(s.wCost)}</div></div><div class="card p-3.5 border-r-4 border-emerald-600"><div class="text-xs text-slate-500">البيعية</div><div class="text-lg font-black text-emerald-700 mt-1">${cf(s.wSell)}</div></div></div>
-  <div class="grid grid-cols-2 gap-2.5"><button onclick="openProdModal()" class="btn b-tl py-2.5 text-sm">+ إضافة صنف</button><button onclick="openPurModal()" class="btn b-gn py-2.5 text-sm">+ استلام رسمي من تاجر</button></div>
+  <div class="grid grid-cols-2 gap-2.5"><button onclick="openProdModal()" class="btn b-tl py-2.5 text-sm">+ إضافة صنف</button><button onclick="openPurModal()" class="btn b-gn py-2.5 text-sm">+ شراء واستلام من تاجر</button></div>
   <div class="card p-1.5 grid grid-cols-2 gap-1.5 text-xs font-extrabold"><button onclick="tabWh='items';render()" class="py-2 rounded-xl cursor-pointer ${tabWh==='items'?'bg-teal-700 text-white':'text-slate-600'}">الأصناف (${D.prod.length})</button><button onclick="tabWh='moves';render()" class="py-2 rounded-xl cursor-pointer ${tabWh==='moves'?'bg-[#0f172a] text-white':'text-slate-600'}">حركة المستودع</button></div>
   <div class="card p-3 flex gap-2"><input id="wh-q" type="search" autocomplete="off" value="${esc(F.wq)}" oninput="F.wq=this.value;rWhList()" placeholder="بحث باسم الصنف..." class="inp flex-1 bg-slate-50"/>${tabWh==='items'?`<select onchange="F.ws=this.value;rWhList()" class="inp bg-slate-50 text-xs"><option value="all">الكل</option><option value="ok">متوفر</option><option value="low">منخفض</option><option value="out">نافذ</option></select>`:''}</div><div id="wh-list" class="min-h-[50vh]"></div>`;
 }
 function rWhList(){
   const el=$('wh-list');if(!el)return;const q=F.wq.trim().toLowerCase();
   if(tabWh==='moves'){
-    const mv=[];D.pur.forEach(p=>(p.items||[]).forEach(x=>mv.push({t:'in',dt:p.date,ts:p.ts||0,ref:p.num,name:x.name,qty:x.qty,who:p.sname,by:p.by,id:p.id})));D.ord.forEach(o=>(o.items||[]).forEach(x=>mv.push({t:'out',dt:o.date,ts:o.ts||0,ref:o.num,name:x.name,qty:x.qty,who:o.cname||'زبون نقدي',by:o.by,id:o.id})));
+    const mv=[];D.pur.forEach(p=>(p.items||[]).forEach(x=>mv.push({t:'in',dt:p.date,ts:p.ts||0,ref:p.bondNum||p.num,name:x.name,qty:x.qty,who:p.sname,by:p.by,id:p.id})));D.ord.forEach(o=>(o.items||[]).forEach(x=>mv.push({t:'out',dt:o.date,ts:o.ts||0,ref:o.num,name:x.name,qty:x.qty,who:o.cname||'زبون نقدي',by:o.by,id:o.id})));
     const list=mv.filter(m=>!q||(m.name||'').toLowerCase().includes(q)||(m.ref||'').toLowerCase().includes(q)).sort((a,b)=>b.ts-a.ts);
     el.innerHTML=!list.length?'<div class="card p-10 text-center text-slate-400 text-sm">لا توجد حركات</div>':`<div class="card divide-y">${list.map(m=>`<div class="p-3.5 flex justify-between items-center gap-2 border-r-4 ${m.t==='in'?'border-emerald-600':'border-blue-600'}"><div class="min-w-0"><div class="flex items-center gap-1.5 flex-wrap"><span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold ${m.t==='in'?'bg-emerald-100 text-emerald-800':'bg-blue-100 text-blue-800'}">${m.t==='in'?'استلام رسمي +':'بيع -'}</span><span class="font-extrabold text-sm">${esc(m.name)}</span>${byBadge(m.by)}</div><div class="text-xs text-slate-500 mt-0.5"><span class="num font-bold">${esc(m.ref)}</span> • <span class="num">${esc(fmtDate(m.dt))}</span> • ${esc(m.who)}</div></div><div class="flex items-center gap-2 shrink-0"><strong class="num ${m.t==='in'?'text-emerald-700':'text-rose-600'}">${m.t==='in'?'+':'-'}${nf(m.qty)}</strong><button onclick="${m.t==='in'?`prevPur('${m.id}')`:`issueOrPrevInv('${m.id}')`}" class="btn b-lt">المستند</button></div></div>`).join('')}</div>`;
     return;
@@ -1051,7 +1211,7 @@ function openProdModal(id=''){
         </div>
         <div><label class="text-[11px] font-bold text-slate-600 block mb-1">حد التنبيه (المنخفض)</label><input id="pm1" type="number" min="0" step="any" value="${p?Number(p.min)||5:5}" class="inp w-full num"/></div>
       </div>
-      ${locked?`<div class="rounded-xl bg-amber-50 border border-amber-200 p-2.5 text-[11px] font-bold text-amber-900 flex items-center justify-between gap-2"><span>تم قفل الكمية بعد الإدخال الأول — لا يمكن زيادتها إلا باستلام رسمي من تاجر.</span><button type="button" onclick="closeM();openPurModal()" class="btn b-tl shrink-0">استلام من تاجر</button></div>`:`<div class="text-[11px] text-slate-500 font-bold">ملاحظة: بمجرد إدخال أول كمية سيتم قفل حقل الكمية تلقائياً ولن يُعدّل إلا عبر سند استلام رسمي من تاجر.</div>`}
+      ${locked?`<div class="rounded-xl bg-amber-50 border border-amber-200 p-2.5 text-[11px] font-bold text-amber-900 flex items-center justify-between gap-2"><span>تم قفل الكمية بعد الإدخال الأول — لا يمكن زيادتها إلا باستلام رسمي من تاجر.</span><button type="button" onclick="closeM();openPurModal()" class="btn b-tl shrink-0">شراء من تاجر</button></div>`:`<div class="text-[11px] text-slate-500 font-bold">ملاحظة: بمجرد إدخال أول كمية سيتم قفل حقل الكمية تلقائياً ولن يُعدّل إلا عبر استلام رسمي من تاجر.</div>`}
       <div class="flex justify-end gap-2 pt-1"><button type="button" onclick="closeM()" class="btn b-lt px-4 py-2">إلغاء</button><button class="btn b-tl px-5 py-2">حفظ الصنف</button></div>
     </form>`);
 }
@@ -1123,7 +1283,7 @@ function loadSample(){
   if(!D.s.name)Object.assign(D.s,{name:'شركة عباس للزجاج',nameEn:'ABBAS GLASS CO.',cur:'$',phone:'0931742603',addr:'دمشق - الكسوة',bank:'Commercial Bank',iban:''});
   const w=who(),c1={id:uid('c'),name:'موسى مصر',phone:'0933112233',addr:'دمشق',open:0,...w,ts:Date.now()-5e5},s1={id:uid('s'),name:'شركة النور للتوريدات',phone:'0944556677',addr:'المنطقة الصناعية',open:0,...w,ts:Date.now()-5e5},p1={id:uid('pr'),name:'مفرد | سيكوريت (شفاف) 5 ملم',cost:12,sell:15,qty:100,qtyLocked:true,min:10,...w,ts:Date.now()-5e5},p2={id:uid('pr'),name:'مفرد | سيكوريت (شفاف) 10 ملم',cost:14,sell:20,qty:80,qtyLocked:true,min:10,...w,ts:Date.now()-4e5},p3={id:uid('pr'),name:'مفرد | عادي (شفاف) 6 ملم',cost:10,sell:15,qty:60,qtyLocked:true,min:5,...w,ts:Date.now()-3e5};
   D.cust.push(c1);D.sup.push(s1);D.prod.push(p1,p2,p3);
-  const pur1={id:uid('pur'),num:D.s.purP+D.s.nPur++,date:today(),sid:s1.id,sname:s1.name,items:[{pid:p1.id,name:p1.name,qty:100,pr:12,tot:1200},{pid:p2.id,name:p2.name,qty:80,pr:14,tot:1120}],total:2320,note:'توريد أول',...w,ts:Date.now()-3e5};
+  const pur1={id:uid('pur'),num:D.s.purP+D.s.nPur++,bondNum:D.s.dnP+D.s.nDn++,payType:'debt',date:today(),sid:s1.id,sname:s1.name,items:[{pid:p1.id,name:p1.name,qty:100,pr:12,tot:1200},{pid:p2.id,name:p2.name,qty:80,pr:14,tot:1120}],total:2320,note:'توريد أول بالدين',...w,ts:Date.now()-3e5};
   D.pur.push(pur1);
   D.ord.push({id:uid('ord'),num:D.s.ordP+D.s.nOrd++,invId:null,invNum:null,date:today(),cid:c1.id,cname:c1.name,cph:c1.phone,items:[{pid:p1.id,name:p1.name,qty:59,pr:15,cost:12,tot:885},{pid:p2.id,name:p2.name,qty:32,pr:20,cost:14,tot:640},{pid:p3.id,name:p3.name,qty:1,pr:15,cost:10,tot:15}],total:1540,paid:1540,rem:0,st:'paid',pm:'كاش',note:'',...w,ts:Date.now()-2e5});
   logAct('sys','بيانات تجريبية','تم تحميل بيانات تجريبية بنجاح');save();go('dashboard');toast('تم التحميل');
