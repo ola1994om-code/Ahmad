@@ -18,7 +18,7 @@ html,body{font-family:'Cairo','Inter',sans-serif;overflow-x:hidden;max-width:100
 .b-bl{background:#1d4ed8;color:#fff}.b-dk{background:#0f172a;color:#fff}.b-gn{background:#047857;color:#fff}.b-tl{background:#0f766e;color:#fff}.b-am{background:#d97706;color:#fff}.b-rd{background:#be123c;color:#fff}.b-sk{background:#0284c7;color:#fff}.b-cy{background:#155e75;color:#fff}.b-in{background:#4338ca;color:#fff}.b-vi{background:#6d28d9;color:#fff}.b-lt{background:#f1f5f9;color:#334155}.b-rs{background:#fff1f2;color:#be123c}
 #doc-stage{display:flex;align-items:center;justify-content:center;overflow:hidden;width:100%;flex:1;min-height:0}
 #doc-wrap{position:relative;display:flex;justify-content:center;align-items:flex-start}
-#print-area{width:560px;transform-origin:top center;flex-shrink:0}
+#print-area{width:620px;transform-origin:top center;flex-shrink:0}
 @page{size:A4 portrait;margin:8mm}
 @media print{
   #app,#mnav,#sb-bg,#toasts,#login-screen,.no-print{display:none!important}
@@ -41,7 +41,7 @@ html,body{font-family:'Cairo','Inter',sans-serif;overflow-x:hidden;max-width:100
     </div>
     <div id="sb-user" class="px-3.5 py-2.5 border-b border-slate-800/80 bg-slate-900/60 flex items-center justify-between gap-2"></div>
     <nav id="sb-nav" class="flex-1 p-3 space-y-1 overflow-y-auto text-sm"></nav>
-    <div class="p-3.5 border-t border-slate-800 text-[11px] text-slate-400 flex justify-between"><span class="num">ERP v6.2</span><span class="text-emerald-400 font-bold">● رقابة نشطة</span></div>
+    <div class="p-3.5 border-t border-slate-800 text-[11px] text-slate-400 flex justify-between"><span class="num">ERP v6.3</span><span class="text-emerald-400 font-bold">● رقابة نشطة</span></div>
   </aside>
   <div class="flex-1 flex flex-col min-w-0 w-full">
     <header class="sticky top-0 z-30 bg-white/95 backdrop-blur border-b border-slate-200 px-3 sm:px-6 py-2.5 flex items-center justify-between gap-2">
@@ -99,6 +99,7 @@ function save(){try{localStorage.setItem(KEY,JSON.stringify(D));}catch{toast('ت
 const $=id=>document.getElementById(id),
 uid=(p='id')=>p+'_'+Date.now()+'_'+Math.random().toString(36).slice(2,6),
 today=()=>{const n=new Date();return new Date(n-n.getTimezoneOffset()*60000).toISOString().slice(0,10);},
+fmtDate=d=>{if(!d||!/^\d{4}-\d{2}-\d{2}$/.test(d))return d||'';const[y,m,day]=d.split('-');return`${day}-${m}-${y}`;},
 nowTime=()=>{const n=new Date();return String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0');},
 esc=s=>s==null?'':String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'),
 rn=n=>Math.round((Number(n)||0)*100)/100,
@@ -232,7 +233,7 @@ function modal(html,w='max-w-lg'){const r=$('modal');r.className='fixed inset-0 
 function closeM(){const r=$('modal');r.className='fixed inset-0 z-50 hidden';r.innerHTML='';curWA=null;}
 function confirmM(title,msg,fn,cls='b-rd'){window._cf=fn;modal(`<div class="p-5 space-y-4"><h3 class="text-base font-extrabold">${esc(title)}</h3><p class="text-sm text-slate-600">${esc(msg)}</p><div class="flex justify-end gap-2 pt-2 border-t"><button onclick="closeM()" class="btn b-lt px-4 py-2">إلغاء</button><button onclick="closeM();window._cf&&window._cf()" class="btn ${cls} px-4 py-2">تأكيد</button></div></div>`,'max-w-sm');}
 
-function docModal(title,bodyHtml,waInfo=null,barBg='bg-[#0b1222]'){
+function docModal(title,bodyHtml,waInfo=null,barBg='bg-[#0b1222]',plainWrap=false){
   curWA=waInfo;const r=$('modal');r.className='fixed inset-0 z-50 flex flex-col bg-slate-900 overflow-hidden';r.onclick=null;
   r.innerHTML=`<div id="doc-shell" class="w-full h-[100dvh] flex flex-col overflow-hidden">
     <div id="doc-bar" class="no-print h-12 px-2.5 sm:px-5 ${barBg} text-white border-b border-white/10 flex items-center justify-between gap-1.5 shrink-0">
@@ -244,7 +245,7 @@ function docModal(title,bodyHtml,waInfo=null,barBg='bg-[#0b1222]'){
         <button onclick="closeM()" class="btn bg-slate-800 text-slate-200 text-[11px]">إغلاق</button>
       </div>
     </div>
-    <div id="doc-stage" onclick="if($('doc-bar')?.classList.contains('hidden'))ssMode(0)" class="bg-slate-300/90 p-2"><div id="doc-wrap"><div id="print-area" class="bg-white text-slate-900 rounded-xl shadow-2xl border overflow-hidden">${bodyHtml}</div></div></div>
+    <div id="doc-stage" onclick="if($('doc-bar')?.classList.contains('hidden'))ssMode(0)" class="${plainWrap?'bg-slate-200':'bg-slate-300/90'} p-2"><div id="doc-wrap"><div id="print-area" class="${plainWrap?'bg-white text-slate-900 rounded-2xl shadow-2xl overflow-hidden':'bg-white text-slate-900 rounded-xl shadow-2xl border overflow-hidden'}">${bodyHtml}</div></div></div>
   </div>`;
   requestAnimationFrame(()=>{fitDoc();setTimeout(fitDoc,70);});
 }
@@ -349,7 +350,7 @@ function vOrdShell(){
   </div>
   <div class="card p-1.5 grid grid-cols-2 gap-1.5 text-xs font-extrabold">
     <button onclick="tabOrd='ord';render()" class="py-2 rounded-xl cursor-pointer ${tabOrd==='ord'?'bg-blue-700 text-white':'text-slate-600'}">الطلبيات (<span class="num">${D.ord.length}</span>)</button>
-    <button onclick="tabOrd='invs';render()" class="py-2 rounded-xl cursor-pointer ${tabOrd==='invs'?'bg-[#0f172a] text-white':'text-slate-600'}">الفواتير (<span class="num">${D.invs.length}</span>)</button>
+    <button onclick="tabOrd='invs';render()" class="py-2 rounded-xl cursor-pointer ${tabOrd==='invs'?'bg-[#0e6245] text-white':'text-slate-600'}">الفواتير (<span class="num">${D.invs.length}</span>)</button>
   </div>
   <div class="card p-3 flex flex-col lg:flex-row gap-2 justify-between">
     <div class="flex flex-wrap gap-2 flex-1">
@@ -363,11 +364,11 @@ function rOrdList(){
   const el=$('ord-list');if(!el)return;const q=F.oq.trim().toLowerCase();
   if(tabOrd==='invs'){
     const list=D.invs.filter(v=>!q||(v.invNum||'').toLowerCase().includes(q)||(v.cname||'').toLowerCase().includes(q)||(v.by||'').toLowerCase().includes(q)||(v.ordNums||[]).join(' ').toLowerCase().includes(q)).sort((a,b)=>(b.ts||0)-(a.ts||0));
-    el.innerHTML=!list.length?'<div class="card p-10 text-center text-slate-400 text-sm">لا توجد فواتير بعد</div>':`<div class="space-y-2.5">${list.map(v=>{const[lb,cl]=stBadge(v.st,v.pm);return`<div class="card p-3.5 border-r-4 border-[#0f172a] flex flex-col sm:flex-row sm:items-center justify-between gap-2.5"><div class="space-y-0.5 min-w-0 flex-1"><div class="flex items-center gap-1.5 flex-wrap"><span class="font-black text-sm num">فاتورة ${esc(v.invNum)}</span><span class="px-2 py-0.5 rounded-full text-[10px] font-bold border ${cl}">${lb}</span><span class="text-xs text-slate-400 num">${esc(v.date)}</span>${byBadge(v.by)}</div><div class="text-sm font-bold">${v.cid?`<button onclick="openCust('${v.cid}')" class="text-blue-700 cursor-pointer">${esc(v.cname)}</button>`:esc(v.cname||'زبون نقدي')}</div><div class="text-xs text-slate-500 num">الطلبيات (${(v.ordNums||[]).length}): ${esc((v.ordNums||[]).join(' ، '))}</div>${itemChips(v.items)}</div><div class="flex flex-wrap items-center justify-between sm:justify-end gap-3 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0"><div class="flex gap-3 text-xs"><div><span class="text-slate-400 block">الإجمالي</span><strong>${cf(v.total)}</strong></div><div><span class="text-slate-400 block">المدفوع</span><strong class="text-emerald-700">${cf(v.paid)}</strong></div><div><span class="text-slate-400 block">المتبقي</span><strong class="${v.rem>0?'text-rose-600':'text-slate-400'}">${cf(v.rem)}</strong></div></div><div class="flex gap-1.5"><button onclick="prevInv('${v.id}')" class="btn b-dk">عرض الفاتورة</button>${can('del')?`<button onclick="delInv('${v.id}')" class="btn b-rs">حذف</button>`:''}</div></div></div>`;}).join('')}</div>`;
+    el.innerHTML=!list.length?'<div class="card p-10 text-center text-slate-400 text-sm">لا توجد فواتير بعد</div>':`<div class="space-y-2.5">${list.map(v=>{const[lb,cl]=stBadge(v.st,v.pm);return`<div class="card p-3.5 border-r-4 border-[#0e6245] flex flex-col sm:flex-row sm:items-center justify-between gap-2.5"><div class="space-y-0.5 min-w-0 flex-1"><div class="flex items-center gap-1.5 flex-wrap"><span class="font-black text-sm num text-[#0e6245]">فاتورة ${esc(v.invNum)}</span><span class="px-2 py-0.5 rounded-full text-[10px] font-bold border ${cl}">${lb}</span><span class="text-xs text-slate-400 num">${esc(v.date)}</span>${byBadge(v.by)}</div><div class="text-sm font-bold">${v.cid?`<button onclick="openCust('${v.cid}')" class="text-blue-700 cursor-pointer">${esc(v.cname)}</button>`:esc(v.cname||'زبون نقدي')}</div><div class="text-xs text-slate-500 num">الطلبيات (${(v.ordNums||[]).length}): ${esc((v.ordNums||[]).join(' ، '))}</div>${itemChips(v.items)}</div><div class="flex flex-wrap items-center justify-between sm:justify-end gap-3 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0"><div class="flex gap-3 text-xs"><div><span class="text-slate-400 block">الإجمالي</span><strong>${cf(v.total)}</strong></div><div><span class="text-slate-400 block">المدفوع</span><strong class="text-emerald-700">${cf(v.paid)}</strong></div><div><span class="text-slate-400 block">المتبقي</span><strong class="${v.rem>0?'text-rose-600':'text-slate-400'}">${cf(v.rem)}</strong></div></div><div class="flex gap-1.5"><button onclick="prevInv('${v.id}')" class="btn b-gn">عرض الفاتورة</button>${can('del')?`<button onclick="delInv('${v.id}')" class="btn b-rs">حذف</button>`:''}</div></div></div>`;}).join('')}</div>`;
     return;
   }
   const list=D.ord.filter(o=>(F.os==='all'||o.st===F.os)&&(!q||(o.num||'').toLowerCase().includes(q)||(o.invNum||'').toLowerCase().includes(q)||(o.cname||'').toLowerCase().includes(q)||(o.by||'').toLowerCase().includes(q))).sort((a,b)=>(b.ts||0)-(a.ts||0));
-  el.innerHTML=!list.length?'<div class="card p-10 text-center text-slate-400 text-sm">لا توجد طلبيات</div>':`<div class="space-y-2.5">${list.map(o=>{const[lb,cl]=stBadge(o.st,o.pm);return`<div class="card p-3.5 border-r-4 border-blue-600 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5"><div class="space-y-0.5 min-w-0 flex-1"><div class="flex items-center gap-1.5 flex-wrap"><span class="font-black text-sm num">${esc(o.num)}</span>${o.invNum?`<span class="px-2 py-0.5 rounded bg-blue-100 text-blue-800 text-[10px] font-extrabold num">${esc(o.invNum)}</span>`:'<span class="px-2 py-0.5 rounded bg-slate-100 text-slate-600 text-[10px] font-bold">غير مفوترة</span>'}<span class="px-2 py-0.5 rounded-full text-[10px] font-bold border ${cl}">${lb}</span><span class="text-xs text-slate-400 num">${esc(o.date)}</span>${byBadge(o.by)}</div><div class="text-sm font-bold">${o.cid?`<button onclick="openCust('${o.cid}')" class="text-blue-700 cursor-pointer">${esc(o.cname)}</button>`:'زبون نقدي'}</div>${itemChips(o.items)}</div><div class="flex flex-wrap items-center justify-between sm:justify-end gap-3 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0"><div class="flex gap-3 text-xs"><div><span class="text-slate-400 block">الإجمالي</span><strong>${cf(o.total)}</strong></div><div><span class="text-slate-400 block">المدفوع</span><strong class="text-emerald-700">${cf(o.paid)}</strong></div><div><span class="text-slate-400 block">المتبقي</span><strong class="${o.rem>0?'text-rose-600':'text-slate-400'}">${cf(o.rem)}</strong></div></div><div class="flex gap-1.5"><button onclick="issueOrPrevInv('${o.id}')" class="btn b-bl">${o.invId?'الفاتورة':'إصدار فاتورة'}</button>${can('del')?`<button onclick="delOrd('${o.id}')" class="btn b-rs">حذف</button>`:''}</div></div></div>`;}).join('')}</div>`;
+  el.innerHTML=!list.length?'<div class="card p-10 text-center text-slate-400 text-sm">لا توجد طلبيات</div>':`<div class="space-y-2.5">${list.map(o=>{const[lb,cl]=stBadge(o.st,o.pm);return`<div class="card p-3.5 border-r-4 border-blue-600 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5"><div class="space-y-0.5 min-w-0 flex-1"><div class="flex items-center gap-1.5 flex-wrap"><span class="font-black text-sm num">${esc(o.num)}</span>${o.invNum?`<span class="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[10px] font-extrabold num">${esc(o.invNum)}</span>`:'<span class="px-2 py-0.5 rounded bg-slate-100 text-slate-600 text-[10px] font-bold">غير مفوترة</span>'}<span class="px-2 py-0.5 rounded-full text-[10px] font-bold border ${cl}">${lb}</span><span class="text-xs text-slate-400 num">${esc(o.date)}</span>${byBadge(o.by)}</div><div class="text-sm font-bold">${o.cid?`<button onclick="openCust('${o.cid}')" class="text-blue-700 cursor-pointer">${esc(o.cname)}</button>`:'زبون نقدي'}</div>${itemChips(o.items)}</div><div class="flex flex-wrap items-center justify-between sm:justify-end gap-3 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0"><div class="flex gap-3 text-xs"><div><span class="text-slate-400 block">الإجمالي</span><strong>${cf(o.total)}</strong></div><div><span class="text-slate-400 block">المدفوع</span><strong class="text-emerald-700">${cf(o.paid)}</strong></div><div><span class="text-slate-400 block">المتبقي</span><strong class="${o.rem>0?'text-rose-600':'text-slate-400'}">${cf(o.rem)}</strong></div></div><div class="flex gap-1.5"><button onclick="issueOrPrevInv('${o.id}')" class="btn b-bl">${o.invId?'الفاتورة':'إصدار فاتورة'}</button>${can('del')?`<button onclick="delOrd('${o.id}')" class="btn b-rs">حذف</button>`:''}</div></div></div>`;}).join('')}</div>`;
 }
 
 function openOrdModal(preC=''){
@@ -491,7 +492,7 @@ function delOrd(id){
 function openInvModal(preC=''){
   const un=D.ord.filter(o=>!o.invId&&!o.invNum);if(!un.length){toast('كل الطلبيات مفوترة','warn');return;}
   const cw=D.cust.filter(c=>un.some(o=>o.cid===c.id)),hc=un.some(o=>!o.cid),init=(preC&&un.some(o=>o.cid===preC))?preC:(cw[0]?.id||'__cash__');selOrds=new Set();
-  modal(`<div class="p-4 border-b flex justify-between bg-[#0f172a] text-white"><h3 class="font-extrabold text-sm">إصدار فاتورة (<span class="num">${esc(D.s.invP+D.s.nInv)}</span>)</h3><button onclick="closeM()" class="cursor-pointer">×</button></div>
+  modal(`<div class="p-4 border-b flex justify-between bg-[#0e6245] text-white"><h3 class="font-extrabold text-sm">إصدار فاتورة (<span class="num">${esc(D.s.invP+D.s.nInv)}</span>)</h3><button onclick="closeM()" class="cursor-pointer">×</button></div>
     <form onsubmit="saveInvModal(event)" class="p-4 space-y-3 max-h-[84vh] overflow-y-auto">
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
         <div><label class="text-[11px] font-bold text-slate-600 block mb-1">الزبون</label><select id="mi-c" required onchange="selOrds.clear();rInvOrdList()" class="inp w-full bg-slate-50 font-bold">${cw.map(c=>`<option value="${c.id}" ${c.id===init?'selected':''}>${esc(c.name)} (${un.filter(o=>o.cid===c.id).length})</option>`).join('')}${hc?`<option value="__cash__" ${init==='__cash__'?'selected':''}>زبون نقدي (${un.filter(o=>!o.cid).length})</option>`:''}</select></div>
@@ -501,7 +502,7 @@ function openInvModal(preC=''){
       <div id="mi-list" class="space-y-1.5 max-h-60 overflow-y-auto"></div>
       <div class="bg-slate-50 border rounded-xl p-3 grid grid-cols-4 gap-2 text-center text-xs"><div><span class="text-slate-500 block">الطلبيات</span><strong id="mi-cnt" class="num text-blue-800">0</strong></div><div><span class="text-slate-500 block">الإجمالي</span><strong id="mi-tot">0</strong></div><div><span class="text-slate-500 block">المدفوع</span><strong id="mi-pd" class="text-emerald-700">0</strong></div><div><span class="text-slate-500 block">المتبقي</span><strong id="mi-rm" class="text-rose-600">0</strong></div></div>
       <input id="mi-note" placeholder="ملاحظة..." class="inp w-full"/>
-      <div class="flex justify-end gap-2"><button type="button" onclick="closeM()" class="btn b-lt px-4 py-2">إلغاء</button><button class="btn b-dk px-5 py-2">إصدار الفاتورة</button></div>
+      <div class="flex justify-end gap-2"><button type="button" onclick="closeM()" class="btn b-lt px-4 py-2">إلغاء</button><button class="btn b-gn px-5 py-2">إصدار الفاتورة</button></div>
     </form>`,'max-w-2xl');
   rInvOrdList();
 }
@@ -509,7 +510,7 @@ function getUninvoicedForSelected(){const cid=$('mi-c')?.value||'';return D.ord.
 function rInvOrdList(){
   const el=$('mi-list');if(!el)return;const list=getUninvoicedForSelected();
   el.innerHTML=!list.length?'<div class="p-6 text-center text-xs text-slate-400 border rounded-xl">لا توجد طلبيات</div>':list.map(o=>{
-    const chk=selOrds.has(o.id);return`<label class="flex items-center justify-between gap-2 p-2.5 rounded-xl border cursor-pointer ${chk?'bg-blue-50 border-blue-600':'bg-white'}"><div class="flex items-center gap-2 min-w-0"><input type="checkbox" ${chk?'checked':''} onchange="toggleOrdPick('${o.id}',this.checked)" class="w-4 h-4"/><div class="min-w-0"><div class="text-xs font-extrabold"><span class="num text-blue-900">${esc(o.num)}</span> <span class="text-[10px] text-slate-400 num">${esc(o.date)}</span></div><div class="text-[11px] text-slate-500 truncate">${esc((o.items||[]).map(x=>`${x.name} (العدد: ${nf(x.qty)} × السعر: ${nf(x.pr)})`).join('، '))}</div></div></div><div class="text-left shrink-0 text-xs"><div class="font-black">${cf(o.total)}</div></div></label>`;
+    const chk=selOrds.has(o.id);return`<label class="flex items-center justify-between gap-2 p-2.5 rounded-xl border cursor-pointer ${chk?'bg-emerald-50 border-emerald-600':'bg-white'}"><div class="flex items-center gap-2 min-w-0"><input type="checkbox" ${chk?'checked':''} onchange="toggleOrdPick('${o.id}',this.checked)" class="w-4 h-4"/><div class="min-w-0"><div class="text-xs font-extrabold"><span class="num text-emerald-900">${esc(o.num)}</span> <span class="text-[10px] text-slate-400 num">${esc(o.date)}</span></div><div class="text-[11px] text-slate-500 truncate">${esc((o.items||[]).map(x=>`${x.name} (العدد: ${nf(x.qty)} × السعر: ${nf(x.pr)})`).join('، '))}</div></div></div><div class="text-left shrink-0 text-xs"><div class="font-black">${cf(o.total)}</div></div></label>`;
   }).join('');calcInvModal();
 }
 function toggleOrdPick(id,on){on?selOrds.add(id):selOrds.delete(id);rInvOrdList();}
@@ -520,34 +521,78 @@ function delInv(id){if(!can('del')){toast('لا تملك الصلاحية','err'
 
 function prevInv(id){
   const v=byId(D.invs,id);if(!v)return;
-  const s=D.s,c=v.cid?byId(D.cust,v.cid):null,cBal=c?cStats(c.id).bal:null,ph=c?.phone||v.cph||'',addr=c?.addr||v.caddr||'',[stLabel]=stBadge(v.st,v.pm);
-  const stPill=v.st==='paid'?'bg-emerald-100 text-emerald-800 border-emerald-300':v.st==='partial'?'bg-amber-100 text-amber-900 border-amber-300':'bg-rose-100 text-rose-800 border-rose-300';
-  const items=v.items||[],ordNums=v.ordNums||[],hm=ordNums.length>1,tQty=rn(items.reduce((a,x)=>a+(Number(x.qty)||0),0));
-  const waMsg=`*${bName()}*\nفاتورة رقم: *${v.invNum}*\nالتاريخ: ${v.date}\nالزبون: *${v.cname}*${v.by?`\nبواسطة: ${v.by}`:''}\n------------------\n${items.map((x,i)=>`${i+1}. ${x.name}\n   العدد: ${nf(x.qty)} × السعر: ${cfp(x.pr)} = ${cfp(x.tot)}`).join('\n')}\n------------------\nإجمالي العدد: ${nf(tQty)}\nالإجمالي: *${cfp(v.total)}*\nالمدفوع: ${cfp(v.paid)}\nالمتبقي: ${cfp(v.rem)}${cBal!==null?`\nالرصيد الكلي: *${cfp(cBal)}*`:''}`;
-  docModal(`فاتورة رقم ${v.invNum}`,`<div class="bg-white text-slate-900">
-    <div class="h-1.5 bg-gradient-to-l from-[#0f172a] via-blue-700 to-sky-500"></div>
-    <div class="px-5 py-4 border-b flex justify-between items-start gap-4 bg-slate-50/60">
-      <div class="flex items-start gap-3 min-w-0">${s.logo?`<img src="${s.logo}" class="w-12 h-12 object-contain rounded-xl border bg-white p-1 shrink-0"/>`:'<div class="w-12 h-12 rounded-xl bg-[#0f172a] text-white flex items-center justify-center font-black text-sm shrink-0">ERP</div>'}
-        <div class="min-w-0"><div class="text-base font-black text-[#0f172a] truncate">${esc(bName())}</div><div class="text-[9.5px] font-extrabold text-blue-700 uppercase num">${esc(bEn())}</div><div class="text-[9.5px] text-slate-500 flex flex-wrap gap-x-2 mt-1">${s.phone?`<span class="num">${esc(s.phone)}</span>`:''}${s.addr?`<span>${esc(s.addr)}</span>`:''}</div></div>
+  const c=v.cid?byId(D.cust,v.cid):null,cBal=c?cStats(c.id).bal:null,ph=c?.phone||v.cph||'';
+  const items=v.items||[],ordNums=v.ordNums||[],ordCnt=ordNums.length||1,tQty=rn(items.reduce((a,x)=>a+(Number(x.qty)||0),0));
+  const shortInv=String(v.invNum||'').replace(/^INV-/i,'');
+  const shortOrd=n=>n?('#'+String(n).replace(/^ORD-/i,'')):'';
+  const [stLabel]=stBadge(v.st,v.pm);
+  const hasExtraPay=(Number(v.rem)||0)>0||(Number(v.paid)||0)!==(Number(v.total)||0);
+  const waMsg=`*${bName()} - فاتورة #${shortInv}*\nالزبون: *${v.cname}*\nالتاريخ: ${fmtDate(v.date)}\nالطلبيات: ${ordCnt}\n------------------\n${items.map((x,i)=>`${x.ordNum?shortOrd(x.ordNum)+' | ':''}${x.name}\nالعدد: ${nf(x.qty)} × السعر: ${cfp(x.pr)} = ${cfp(x.tot)}`).join('\n')}\n------------------\n*الإجمالي: ${cfp(v.total)}*${hasExtraPay?`\nالمدفوع: ${cfp(v.paid)}\nالمتبقي: ${cfp(v.rem)}`:''}${cBal!==null&&cBal>0?`\nالرصيد الكلي: *${cfp(cBal)}*`:''}`;
+
+  const body=`<div class="p-3.5 bg-white">
+    <div class="rounded-2xl border-2 border-[#0e6245] bg-white px-5 py-4 space-y-4">
+      <div class="flex items-start justify-between gap-4 pb-3 border-b-2 border-[#0e6245]/80">
+        <div class="min-w-0 text-right space-y-1.5">
+          <div class="flex items-center gap-2.5">
+            ${D.s.logo?`<img src="${D.s.logo}" class="w-10 h-10 object-contain rounded-lg border border-slate-200 p-0.5 shrink-0"/>`:''}
+            <h1 class="text-[22px] leading-tight font-black text-[#0e6245] tracking-tight">${esc(bName())} - فاتورة <span class="num">#${esc(shortInv)}</span></h1>
+          </div>
+          <div class="text-[15px] font-extrabold text-slate-800 flex items-center gap-2 flex-wrap">
+            <span>${esc(v.cname||'زبون نقدي')}</span>
+            <span class="text-slate-400 font-normal">|</span>
+            <span class="num text-slate-900">${esc(fmtDate(v.date))}</span>
+          </div>
+        </div>
+        <div class="text-left shrink-0 pt-1 space-y-0.5 text-[#0e6245]">
+          <div class="text-sm font-black num">${esc(v.invNum)}</div>
+          <div class="text-sm font-extrabold num">Orders: ${ordCnt}</div>
+          <div class="text-[11px] font-bold ${v.st==='paid'?'text-emerald-700':v.st==='partial'?'text-amber-700':'text-rose-700'}">${esc(stLabel)}</div>
+        </div>
       </div>
-      <div class="text-left shrink-0"><div class="inline-block px-2 py-0.5 rounded bg-[#0f172a] text-white text-[9px] font-extrabold num">INVOICE</div><div class="text-base font-black mt-1">فاتورة رقم</div><div class="text-xs font-black text-blue-700 num">${esc(v.invNum)}</div></div>
-    </div>
-    <div class="px-5 py-3 grid grid-cols-12 gap-3 bg-slate-50/70 border-b">
-      <div class="col-span-7 bg-white rounded-xl border p-2.5"><div class="text-[8.5px] font-extrabold text-blue-700">السيد / الزبون | BILL TO</div><div class="text-sm font-black truncate">${esc(v.cname||'زبون نقدي')}</div><div class="text-[10px] text-slate-500 flex flex-wrap gap-x-2 mt-0.5">${ph?`<span class="num">${esc(ph)}</span>`:''}${addr?`<span>${esc(addr)}</span>`:''}</div></div>
-      <div class="col-span-5 bg-white rounded-xl border p-2.5 text-[10px] space-y-1">
-        <div class="flex justify-between"><span class="text-slate-500">التاريخ:</span><strong class="num">${esc(v.date)}</strong></div>
-        <div class="flex justify-between gap-2"><span class="text-slate-500">${hm?'الطلبيات:':'الطلبية:'}</span><strong class="num text-blue-800 truncate">${esc(ordNums.join('، '))}</strong></div>
-        ${v.by?`<div class="flex justify-between gap-2"><span class="text-slate-500">بواسطة:</span><strong class="truncate">${esc(v.by)}</strong></div>`:''}
-        <div class="flex justify-between items-center pt-0.5 border-t"><span class="text-slate-500">الحالة:</span><span class="px-2 py-0.5 rounded-full text-[9px] font-extrabold border ${stPill}">${esc(stLabel)}</span></div>
+
+      <div class="overflow-hidden border border-slate-300 rounded-sm">
+        <table class="w-full text-right border-collapse">
+          <thead>
+            <tr class="bg-[#0e6245] text-white text-[13px] font-extrabold">
+              <th class="py-2.5 px-3 text-center w-[15%] border-l border-white/15">الطلب</th>
+              <th class="py-2.5 px-3 text-right w-[41%] border-l border-white/15">المواصفات / الصنف</th>
+              <th class="py-2.5 px-2.5 text-center w-[11%] border-l border-white/15">العدد</th>
+              <th class="py-2.5 px-2.5 text-center w-[14%] border-l border-white/15">السعر</th>
+              <th class="py-2.5 px-3 text-center w-[19%]">المبلغ</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-300 text-[13.5px]">
+            ${items.map((x,n)=>`<tr class="bg-white">
+              <td class="py-3 px-3 text-center font-black text-[#b91c1c] num whitespace-nowrap">${esc(x.ordNum?shortOrd(x.ordNum):'#'+(n+1))}</td>
+              <td class="py-3 px-3 text-right font-bold text-slate-900 break-words">${esc(x.name)}</td>
+              <td class="py-3 px-2.5 text-center font-bold text-slate-800 num">${nf(x.qty)}</td>
+              <td class="py-3 px-2.5 text-center font-bold text-slate-700 num">${nf(x.pr)}</td>
+              <td class="py-3 px-3 text-center font-black text-[#0e6245] num whitespace-nowrap">${esc(cfp(x.tot!=null?x.tot:rn((Number(x.qty)||0)*(Number(x.pr)||0))))}</td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="rounded-xl bg-[#0e6245] text-white py-3.5 px-5 text-center shadow-sm">
+        <span class="text-lg font-black tracking-wide">الإجمالي: <span class="num">${esc(cfp(v.total))}</span></span>
+      </div>
+
+      ${(hasExtraPay||v.note||(cBal!==null&&cBal>0))?`<div class="flex flex-wrap items-center justify-between gap-2 pt-1 text-xs font-bold text-slate-700">
+        <div class="flex flex-wrap gap-3">
+          ${hasExtraPay?`<span>المدفوع: <strong class="text-emerald-700">${cf(v.paid)}</strong></span><span>المتبقي: <strong class="${v.rem>0?'text-rose-700':'text-slate-600'}">${cf(v.rem)}</strong></span>`:''}
+          ${cBal!==null&&cBal>0?`<span>الرصيد الكلي: <strong class="text-rose-700">${cf(cBal)}</strong></span>`:''}
+        </div>
+        ${v.note?`<div class="text-slate-500">ملاحظة: <strong class="text-slate-800">${esc(v.note)}</strong></div>`:''}
+      </div>`:''}
+
+      <div class="flex items-center justify-between text-[11px] font-bold text-slate-400 pt-2 border-t border-slate-200">
+        <span>إجمالي القطع: <strong class="num text-slate-700">${nf(tQty)}</strong>${v.by?` • الموظف: <strong class="text-slate-700">${esc(v.by)}</strong>`:''}</span>
+        <span>${D.s.phone?`<span class="num text-slate-600">${esc(D.s.phone)}</span>`:''}</span>
       </div>
     </div>
-    <div class="px-5 py-3"><div class="rounded-xl border overflow-hidden"><table class="w-full text-[10px] text-right table-fixed"><thead><tr class="bg-[#0f172a] text-white"><th class="p-2 w-[7%] text-center num">#</th>${hm?'<th class="p-2 w-[15%]">الطلبية</th>':''}<th class="p-2 ${hm?'w-[33%]':'w-[46%]'}">الصنف / البيان</th><th class="p-2 w-[12%] text-center">العدد</th><th class="p-2 w-[16%] text-center">سعر الوحدة</th><th class="p-2 w-[17%] text-left">الإجمالي</th></tr></thead><tbody class="divide-y">${items.map((x,n)=>`<tr class="${n%2?'bg-slate-50':''}"><td class="p-2 text-center num">${n+1}</td>${hm?`<td class="p-2 font-bold text-blue-800 num">${esc(x.ordNum||'-')}</td>`:''}<td class="p-2 font-extrabold break-words">${esc(x.name)}</td><td class="p-2 text-center font-bold num">${nf(x.qty)}</td><td class="p-2 text-center num">${cfp(x.pr)}</td><td class="p-2 text-left font-black num">${cfp(x.tot)}</td></tr>`).join('')}</tbody><tfoot><tr class="bg-slate-100 border-t text-[9.5px] font-extrabold"><td colspan="${hm?3:2}" class="p-2">عدد الأصناف: <span class="num">${items.length}</span></td><td class="p-2 text-center">العدد: <span class="num">${nf(tQty)}</span></td><td class="p-2 text-center">المجموع</td><td class="p-2 text-left num">${cfp(v.total)}</td></tr></tfoot></table></div></div>
-    <div class="px-5 pb-3 grid grid-cols-12 gap-3 items-start">
-      <div class="col-span-7 space-y-2">${(s.bank||s.iban)?`<div class="rounded-xl border bg-slate-50 p-2 text-[9.5px]">${s.bank?`<div>البنك: <strong>${esc(s.bank)}</strong></div>`:''}${s.iban?`<div>IBAN: <strong class="num text-blue-800">${esc(s.iban)}</strong></div>`:''}</div>`:''}${v.note?`<div class="rounded-xl border border-blue-100 bg-blue-50/50 p-2 text-[9.5px]"><strong>ملاحظة:</strong> ${esc(v.note)}</div>`:''}${cBal!==null?`<div class="rounded-xl border p-2 flex justify-between text-[10px]"><strong>الرصيد الكلي للزبون:</strong><strong class="${cBal>0?'text-rose-600':'text-emerald-700'}">${cf(cBal)}</strong></div>`:''}</div>
-      <div class="col-span-5 rounded-xl border overflow-hidden text-[10.5px]"><div class="bg-[#0f172a] text-white px-3 py-2 flex justify-between"><span>الإجمالي</span><span class="text-sm font-black">${cf(v.total)}</span></div><div class="bg-emerald-50 px-3 py-1.5 flex justify-between border-b"><span class="text-emerald-800 font-bold">المدفوع</span><strong class="text-emerald-700">${cf(v.paid)}</strong></div><div class="${v.rem>0?'bg-rose-50':'bg-slate-50'} px-3 py-2 flex justify-between"><span class="font-extrabold">المتبقي</span><strong class="${v.rem>0?'text-rose-700':'text-slate-600'}">${cf(v.rem)}</strong></div></div>
-    </div>
-    <div class="px-5 py-3 bg-slate-50 border-t space-y-2"><div class="grid grid-cols-3 gap-4 text-center text-[9px] text-slate-500"><div><div class="border-b border-dashed h-5 mb-1 font-bold text-slate-700">${esc(v.by||'')}</div><span>المحاسب / الموظف</span></div><div><div class="border-b border-dashed h-5 mb-1"></div><span>المستلم</span></div><div><div class="border-b border-dashed h-5 mb-1"></div><span>الختم</span></div></div><div class="text-center text-[9px] font-bold text-slate-500 pt-1 border-t">${esc(s.foot)}</div></div>
-  </div>`,{ph,msg:waMsg},'bg-[#0f172a]');
+  </div>`;
+
+  docModal(`فاتورة #${shortInv}`,body,{ph,msg:waMsg},'bg-[#0a4632]',true);
 }
 
 function vCustShell(){
@@ -567,13 +612,13 @@ function vCustDet(){
     <div class="grid grid-cols-2 lg:grid-cols-4 gap-2 pt-2 border-t"><div class="bg-slate-50 p-2.5 rounded-xl"><div class="text-[11px] text-slate-500">فواتير / طلبيات</div><div class="font-black num">${st.invCnt} / ${st.cnt}</div></div><div class="bg-blue-50 p-2.5 rounded-xl"><div class="text-[11px] text-blue-700 font-bold">المشتريات</div><div class="font-black text-blue-900">${cf(st.sales)}</div></div><div class="bg-emerald-50 p-2.5 rounded-xl"><div class="text-[11px] text-emerald-700 font-bold">المدفوع</div><div class="font-black text-emerald-700">${cf(st.paid)}</div></div><div class="${st.bal>0?'bg-rose-50':'bg-emerald-50'} p-2.5 rounded-xl"><div class="text-[11px] font-bold">المتبقي</div><div class="font-black ${st.bal>0?'text-rose-600':'text-emerald-600'}">${cf(st.bal)}</div></div></div>
   </div>
   <div class="card overflow-hidden"><div class="grid grid-cols-4 bg-sky-50 p-1 gap-1 border-b text-[11px] font-bold">
-    <button onclick="tabC='inv';render()" class="py-2 rounded-xl cursor-pointer ${tabC==='inv'?'bg-[#0f172a] text-white':'text-sky-900'}">فواتيره (${invs.length})</button>
+    <button onclick="tabC='inv';render()" class="py-2 rounded-xl cursor-pointer ${tabC==='inv'?'bg-[#0e6245] text-white':'text-sky-900'}">فواتيره (${invs.length})</button>
     <button onclick="tabC='ord';render()" class="py-2 rounded-xl cursor-pointer ${tabC==='ord'?'bg-sky-700 text-white':'text-sky-900'}">طلبياته (${ords.length})</button>
     <button onclick="tabC='pay';render()" class="py-2 rounded-xl cursor-pointer ${tabC==='pay'?'bg-emerald-700 text-white':'text-sky-900'}">دفعاته (${pays.length})</button>
     <button onclick="tabC='stmt';render()" class="py-2 rounded-xl cursor-pointer ${tabC==='stmt'?'bg-cyan-800 text-white':'text-sky-900'}">الكشف (${L.length})</button>
   </div>
-  ${tabC==='inv'?(invs.length?`<div class="divide-y">${invs.map(v=>`<div class="p-3.5 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2"><div class="flex-1 min-w-0"><div class="font-extrabold text-sm"><span class="num">${esc(v.invNum)}</span> • <span class="text-xs text-slate-400 num">${esc(v.date)}</span> ${byBadge(v.by)}</div><div class="text-xs text-slate-500 num">${esc((v.ordNums||[]).join(' ، '))}</div>${itemChips(v.items)}</div><div class="flex items-center gap-2 shrink-0"><strong>${cf(v.total)}</strong><button onclick="prevInv('${v.id}')" class="btn b-dk">عرض</button></div></div>`).join('')}</div>`:'<div class="p-8 text-center text-slate-400 text-xs">لا توجد فواتير</div>'):''}
-  ${tabC==='ord'?(ords.length?`<div class="divide-y">${ords.map(o=>`<div class="p-3.5 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2"><div class="flex-1 min-w-0"><div class="font-bold text-sm"><span class="num">${esc(o.num)}</span> ${o.invNum?`<span class="text-blue-700 num">→ ${esc(o.invNum)}</span>`:''} <span class="text-xs text-slate-400 num">• ${esc(o.date)}</span> ${byBadge(o.by)}</div>${itemChips(o.items)}</div><div class="flex items-center gap-2 shrink-0"><strong>${cf(o.total)}</strong><button onclick="issueOrPrevInv('${o.id}')" class="btn b-bl">${o.invId?'الفاتورة':'إصدار'}</button></div></div>`).join('')}</div>`:'<div class="p-8 text-center text-slate-400 text-xs">لا توجد طلبيات</div>'):''}
+  ${tabC==='inv'?(invs.length?`<div class="divide-y">${invs.map(v=>`<div class="p-3.5 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2"><div class="flex-1 min-w-0"><div class="font-extrabold text-sm"><span class="num text-[#0e6245]">${esc(v.invNum)}</span> • <span class="text-xs text-slate-400 num">${esc(v.date)}</span> ${byBadge(v.by)}</div><div class="text-xs text-slate-500 num">${esc((v.ordNums||[]).join(' ، '))}</div>${itemChips(v.items)}</div><div class="flex items-center gap-2 shrink-0"><strong>${cf(v.total)}</strong><button onclick="prevInv('${v.id}')" class="btn b-gn">عرض</button></div></div>`).join('')}</div>`:'<div class="p-8 text-center text-slate-400 text-xs">لا توجد فواتير</div>'):''}
+  ${tabC==='ord'?(ords.length?`<div class="divide-y">${ords.map(o=>`<div class="p-3.5 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2"><div class="flex-1 min-w-0"><div class="font-bold text-sm"><span class="num">${esc(o.num)}</span> ${o.invNum?`<span class="text-emerald-700 num">→ ${esc(o.invNum)}</span>`:''} <span class="text-xs text-slate-400 num">• ${esc(o.date)}</span> ${byBadge(o.by)}</div>${itemChips(o.items)}</div><div class="flex items-center gap-2 shrink-0"><strong>${cf(o.total)}</strong><button onclick="issueOrPrevInv('${o.id}')" class="btn b-bl">${o.invId?'الفاتورة':'إصدار'}</button></div></div>`).join('')}</div>`:'<div class="p-8 text-center text-slate-400 text-xs">لا توجد طلبيات</div>'):''}
   ${tabC==='pay'?(pays.length?`<div class="divide-y">${pays.map(p=>`<div class="p-3.5 flex justify-between items-center"><div><div class="font-black text-emerald-700">${cf(p.amt)} <span class="text-xs text-slate-400 num">${esc(p.num||'')}</span> ${byBadge(p.by)}</div><div class="text-xs text-slate-500"><span class="num">${esc(p.date)}</span> • ${esc(p.m||'كاش')} ${p.note?'• '+esc(p.note):''}</div></div><div class="flex gap-1.5"><button onclick="prevRv('${p.id}')" class="btn b-gn">الإيصال</button>${can('del')?`<button onclick="delPay('${p.id}')" class="btn b-rs">حذف</button>`:''}</div></div>`).join('')}</div>`:'<div class="p-8 text-center text-slate-400 text-xs">لا توجد دفعات</div>'):''}
   ${tabC==='stmt'?(L.length?`<div class="divide-y">${L.map(r=>`<div class="p-3 flex justify-between items-center gap-2 text-xs"><div class="min-w-0"><span class="font-bold text-cyan-800 num">${esc(r.ref)}</span> <span class="text-slate-400 num">${esc(r.dt)}</span><div class="text-slate-700 truncate">${esc(r.desc)}</div></div><div class="text-left shrink-0">${r.d?`<div class="text-rose-600 font-bold">عليه: <span class="num">${nf(r.d)}</span></div>`:''}${r.c?`<div class="text-emerald-700 font-bold">دفع: <span class="num">${nf(r.c)}</span></div>`:''}<div class="font-black">الرصيد: <span class="num">${nf(r.r)}</span></div></div></div>`).join('')}</div>`:'<div class="p-8 text-center text-slate-400 text-xs">لا توجد حركات</div>'):''}</div>`;
 }
@@ -719,7 +764,7 @@ function openProdModal(id=''){
   const p=id?byId(D.prod,id):null;
   modal(`<div class="p-4 border-b flex justify-between bg-teal-700 text-white"><h3 class="font-extrabold">${p?'تعديل صنف':'إضافة صنف جديد'}</h3><button onclick="closeM()" class="cursor-pointer">×</button></div>
     <form onsubmit="saveProd(event,'${id}')" class="p-4 space-y-3">
-      <div><label class="text-[11px] font-bold text-slate-600 block mb-1">اسم الصنف *</label><input id="pn1" required value="${esc(p?.name||'')}" placeholder="مثال: طقم حمام، زجاج سيكوريت..." class="inp w-full"/></div>
+      <div><label class="text-[11px] font-bold text-slate-600 block mb-1">اسم الصنف *</label><input id="pn1" required value="${esc(p?.name||'')}" placeholder="مثال: مفرد | سيكوريت (شفاف) 5 ملم" class="inp w-full"/></div>
       <div class="grid grid-cols-2 gap-2.5">
         <div><label class="text-[11px] font-bold text-slate-600 block mb-1">سعر التكلفة</label><input id="pc1" type="number" min="0" step="any" required value="${p?Number(p.cost)||0:0}" class="inp w-full num"/></div>
         <div><label class="text-[11px] font-bold text-slate-600 block mb-1">سعر البيع</label><input id="ps1" type="number" min="0" step="any" required value="${p?Number(p.sell)||0:0}" class="inp w-full num"/></div>
@@ -780,7 +825,7 @@ function vSettings(){
   const s=D.s;
   return `<div class="grid grid-cols-1 lg:grid-cols-3 gap-4"><form onsubmit="saveSet(event)" class="lg:col-span-2 card p-4 space-y-3"><h3 class="font-extrabold border-b pb-2">هوية الشركة والعملة</h3>
     <div class="flex items-center gap-3 p-3 rounded-xl bg-slate-50 border"><div class="w-12 h-12 rounded-xl border bg-white flex items-center justify-center overflow-hidden">${s.logo?`<img src="${s.logo}" class="w-full h-full object-contain p-1"/>`:'<span class="text-[10px] text-slate-400 font-bold">LOGO</span>'}</div><label class="btn b-bl">رفع شعار<input type="file" accept="image/*" onchange="upLogo(event)" class="hidden"/></label>${s.logo?'<button type="button" onclick="D.s.logo=\'\';save();render()" class="btn b-rs">إزالة</button>':''}</div>
-    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5"><input id="snm" value="${esc(s.name)}" placeholder="اسم الشركة بالعربية" class="inp"/><input id="sne" value="${esc(s.nameEn)}" placeholder="Company Name" class="inp num"/><input id="sph" value="${esc(s.phone)}" placeholder="الهاتف" class="inp num"/><input id="scur" value="${esc(s.cur)}" placeholder="العملة ($ / ل.س)" class="inp num"/><input id="sbnk" value="${esc(s.bank)}" placeholder="اسم البنك" class="inp"/><input id="sibn" value="${esc(s.iban)}" placeholder="IBAN / حساب" class="inp num"/></div>
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5"><input id="snm" value="${esc(s.name)}" placeholder="اسم الشركة بالعربية" class="inp"/><input id="sne" value="${esc(s.nameEn)}" placeholder="Company Name" class="inp num"/><input id="sph" value="${esc(s.phone)}" placeholder="الهاتف" class="inp num"/><input id="scur" value="${esc(s.cur)}" placeholder="العملة ($ / SYP)" class="inp num"/><input id="sbnk" value="${esc(s.bank)}" placeholder="اسم البنك" class="inp"/><input id="sibn" value="${esc(s.iban)}" placeholder="IBAN / حساب" class="inp num"/></div>
     <input id="sadr" value="${esc(s.addr)}" placeholder="العنوان" class="inp w-full"/><input id="sft" value="${esc(s.foot)}" placeholder="تذييل الفواتير" class="inp w-full"/>
     <div class="flex justify-end"><button class="btn b-bl px-6 py-2.5">حفظ الإعدادات</button></div></form>
     <div class="space-y-3"><div class="card p-4 space-y-2.5"><h3 class="font-extrabold text-sm">النسخ الاحتياطي</h3><button onclick="expJSON()" class="btn b-dk w-full py-2.5">تصدير نسخة (JSON)</button><label class="btn b-lt w-full py-2.5 border">استيراد نسخة (JSON)<input type="file" accept=".json" onchange="impJSON(event)" class="hidden"/></label></div>
@@ -791,12 +836,11 @@ function saveSet(e){e.preventDefault();Object.assign(D.s,{name:$('snm').value.tr
 function expJSON(){const b=new Blob([JSON.stringify(D)],{type:'application/json'}),u=URL.createObjectURL(b),a=document.createElement('a');a.href=u;a.download=`erp-${today()}.json`;a.click();URL.revokeObjectURL(u);toast('تم التصدير');}
 function impJSON(e){const f=e.target.files?.[0];if(!f)return;const r=new FileReader();r.onload=ev=>{try{localStorage.setItem(KEY,ev.target.result);D=load();render();toast('تم الاستيراد');}catch{toast('ملف غير صالح','err');}};r.readAsText(f);}
 function loadSample(){
-  if(!D.s.name)Object.assign(D.s,{name:'شركة الأفق العالمية للتجارة',nameEn:'HORIZON GLOBAL TRADING',cur:'$',phone:'0931742603',addr:'دمشق - المنطقة الصناعية',bank:'Commercial Bank',iban:'SY46 0010 0000 1984'});
-  const w=who(),c1={id:uid('c'),name:'مجموعة الشرق للمقاولات',phone:'0933112233',addr:'دمشق',open:0,...w,ts:Date.now()-5e5},s1={id:uid('s'),name:'شركة النور للتوريدات',phone:'0944556677',addr:'المنطقة الصناعية',open:0,...w,ts:Date.now()-5e5},p1={id:uid('pr'),name:'طقم حمام كامل فاخر',cost:180,sell:250,qty:18,min:5,...w,ts:Date.now()-5e5},p2={id:uid('pr'),name:'مغسلة رخام مع خلاط',cost:75,sell:110,qty:28,min:8,...w,ts:Date.now()-4e5};
-  D.cust.push(c1);D.sup.push(s1);D.prod.push(p1,p2);
-  D.pur.push({id:uid('pur'),num:D.s.purP+D.s.nPur++,date:today(),sid:s1.id,sname:s1.name,items:[{pid:p1.id,name:p1.name,qty:20,pr:180,tot:3600},{pid:p2.id,name:p2.name,qty:30,pr:75,tot:2250}],total:5850,note:'توريد أول',...w,ts:Date.now()-3e5});
-  D.ord.push({id:uid('ord'),num:D.s.ordP+D.s.nOrd++,invId:null,invNum:null,date:today(),cid:c1.id,cname:c1.name,cph:c1.phone,items:[{pid:p1.id,name:p1.name,qty:2,pr:250,cost:180,tot:500},{pid:p2.id,name:p2.name,qty:2,pr:110,cost:75,tot:220}],total:720,paid:300,rem:420,st:'partial',pm:'ويش ماني',note:'تسليم أول',...w,ts:Date.now()-2e5});
-  D.pay.push({id:uid('rv'),num:D.s.rvP+D.s.nRv++,cid:c1.id,cname:c1.name,amt:220,date:today(),m:'كاش',note:'دفعة',...w,ts:Date.now()-1e5});
+  if(!D.s.name)Object.assign(D.s,{name:'شركة عباس للزجاج',nameEn:'ABBAS GLASS CO.',cur:'SYP',phone:'0931742603',addr:'دمشق - الكسوة',bank:'Commercial Bank',iban:''});
+  const w=who(),c1={id:uid('c'),name:'موسى مصر',phone:'0933112233',addr:'دمشق',open:0,...w,ts:Date.now()-5e5},s1={id:uid('s'),name:'شركة النور للتوريدات',phone:'0944556677',addr:'المنطقة الصناعية',open:0,...w,ts:Date.now()-5e5},p1={id:uid('pr'),name:'مفرد | سيكوريت (شفاف) 5 ملم',cost:12,sell:15,qty:100,min:10,...w,ts:Date.now()-5e5},p2={id:uid('pr'),name:'مفرد | سيكوريت (شفاف) 10 ملم',cost:14,sell:20,qty:80,min:10,...w,ts:Date.now()-4e5},p3={id:uid('pr'),name:'مفرد | عادي (شفاف) 6 ملم',cost:10,sell:15,qty:60,min:5,...w,ts:Date.now()-3e5};
+  D.cust.push(c1);D.sup.push(s1);D.prod.push(p1,p2,p3);
+  D.pur.push({id:uid('pur'),num:D.s.purP+D.s.nPur++,date:today(),sid:s1.id,sname:s1.name,items:[{pid:p1.id,name:p1.name,qty:100,pr:12,tot:1200},{pid:p2.id,name:p2.name,qty:80,pr:14,tot:1120}],total:2320,note:'توريد أول',...w,ts:Date.now()-3e5});
+  D.ord.push({id:uid('ord'),num:D.s.ordP+D.s.nOrd++,invId:null,invNum:null,date:today(),cid:c1.id,cname:c1.name,cph:c1.phone,items:[{pid:p1.id,name:p1.name,qty:59,pr:15,cost:12,tot:885},{pid:p2.id,name:p2.name,qty:32,pr:20,cost:14,tot:640},{pid:p3.id,name:p3.name,qty:1,pr:15,cost:10,tot:15}],total:1540,paid:1540,rem:0,st:'paid',pm:'كاش',note:'',...w,ts:Date.now()-2e5});
   logAct('sys','بيانات تجريبية','تم تحميل بيانات تجريبية');save();go('dashboard');toast('تم التحميل');
 }
 
