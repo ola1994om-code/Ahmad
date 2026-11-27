@@ -42,7 +42,7 @@ span.num,strong.num,b.num{display:inline-block}
     </div>
     <div id="sb-user" class="px-3.5 py-2.5 border-b border-slate-800/80 bg-slate-900/60 flex items-center justify-between gap-2"></div>
     <nav id="sb-nav" class="flex-1 p-3 space-y-1 overflow-y-auto text-sm"></nav>
-    <div class="p-3.5 border-t border-slate-800 text-[11px] text-slate-400 flex justify-between"><span class="num">ERP v7.5</span><span class="text-emerald-400 font-bold">● رقابة نشطة</span></div>
+    <div class="p-3.5 border-t border-slate-800 text-[11px] text-slate-400 flex justify-between items-center"><span class="num">ERP Cloud v7.5</span><span id="sync-sb" class="text-emerald-400 font-bold">● متصل</span></div>
   </aside>
   <div class="flex-1 flex flex-col min-w-0 w-full">
     <header class="sticky top-0 z-30 bg-white/95 backdrop-blur border-b border-slate-200 px-3 sm:px-6 py-2.5 flex items-center justify-between gap-2">
@@ -51,6 +51,7 @@ span.num,strong.num,b.num{display:inline-block}
         <div class="min-w-0"><h2 id="pg-title" class="text-base sm:text-lg font-extrabold text-slate-900 truncate">لوحة التحكم</h2><p id="pg-sub" class="text-[11px] text-slate-500 truncate"></p></div>
       </div>
       <div class="flex items-center gap-1.5 sm:gap-2 shrink-0">
+        <button id="hdr-sync" onclick="manualSync()" class="px-2.5 py-2 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-800 text-xs font-black cursor-pointer" title="مزامنة مع السيرفر">↻</button>
         <button id="hdr-notif" onclick="go('notifications')" class="hidden relative px-2.5 py-2 rounded-xl border border-rose-200 bg-rose-50 text-rose-800 text-xs font-black cursor-pointer" title="قسم الإشعارات"><span>الإشعارات</span><span id="notif-badge" class="hidden absolute -top-1 -left-1 min-w-[18px] h-[18px] px-1 rounded-full bg-rose-600 text-white text-[10px] font-black flex items-center justify-center num">0</span></button>
         <button onclick="openOrdModal()" class="btn b-bl py-2 px-3">+ طلبية</button>
         <button onclick="logout()" class="px-2.5 py-2 rounded-xl border border-slate-200 bg-slate-50 text-rose-700 text-xs font-bold cursor-pointer">خروج</button>
@@ -63,7 +64,10 @@ span.num,strong.num,b.num{display:inline-block}
 <div id="modal" class="fixed inset-0 z-50 hidden items-start sm:items-center justify-center p-2.5 sm:p-4 pt-4 bg-slate-950/70 overflow-y-auto"></div>
 <div id="toasts" class="fixed bottom-20 lg:bottom-5 left-4 z-[80] flex flex-col gap-2 max-w-xs w-[calc(100%-2rem)] pointer-events-none"></div>
 <script>
-const KEY='erp_corp_v5',SKEY='erp_active_uid',
+const SB_URL='https://feymoduxvamkwtmkvmmq.supabase.co/rest/v1/erp_state',
+SB_KEY='sb_publishable_cv24c1EZeGRxZE11-BoX8w_ifkcInVC',
+SB_ROW='main',
+KEY='erp_corp_v5',SKEY='erp_active_uid',
 DEF_ADMIN=()=>({id:'u_admin',name:'المدير العام',title:'مدير النظام',role:'admin',pin:'1234',active:true,perms:{del:true,set:true,fin:true},ts:Date.now()}),
 DEF={s:{name:'',nameEn:'',sub:'',logo:'',cur:'$',phone:'',addr:'',bank:'',iban:'',ordP:'ORD-',invP:'INV-',rvP:'RV-',purP:'PUR-',pvP:'PV-',dnP:'DB-',foot:'شكراً لتعاملكم معنا - Thank you for your business',nOrd:1001,nInv:2026001,nRv:1001,nPur:3001,nPv:2001,nDn:4001},cust:[],sup:[],prod:[],ord:[],invs:[],pay:[],pur:[],spay:[],exp:[],users:[DEF_ADMIN()],logs:[]},
 CATS=['إيجار','رواتب وأجور','كهرباء ومياه','شحن ونقل','صيانة','مشتريات ونثريات','أخرى'],
@@ -72,40 +76,112 @@ NAV=[['dashboard','لوحة التحكم','●','bg-blue-600'],['orders','الط
 LOG_CATS={ord:['طلبيات','bg-blue-100 text-blue-800'],inv:['فواتير','bg-indigo-100 text-indigo-800'],pay:['قبض ودفع','bg-emerald-100 text-emerald-800'],wh:['مستودع ومشتريات','bg-teal-100 text-teal-800'],exp:['مصاريف','bg-rose-100 text-rose-800'],crm:['زبائن وتجار','bg-sky-100 text-sky-800'],sys:['إدارة ونظام','bg-slate-200 text-slate-800']};
 
 let D=load(),curUser=null,view='dashboard',selC=null,tabC='inv',selS=null,tabS='debts',tabSup='debts',tabOrd='ord',tabWh='items',draft=[],pickQ='',pickMode='ord',selOrds=new Set(),curWA=null,
-F={oq:'',os:'all',cq:'',cd:'all',sq:'',sd:'all',sdb:'open',wq:'',ws:'all',lq:'',lu:'all',lc:'all',lr:'all'};
+F={oq:'',os:'all',cq:'',cd:'all',sq:'',sd:'all',sdb:'open',wq:'',ws:'all',lq:'',lu:'all',lc:'all',lr:'all'},
+syncTimer=null,isSaving=false,lastCloudTs='';
 
 function clone(o){return JSON.parse(JSON.stringify(o));}
+function hydrateData(p){
+  if(!p||typeof p!=='object')return clone(DEF);
+  const o=clone(DEF);
+  if(p.s)o.s={...o.s,...p.s};
+  o.cust=p.cust||[];o.sup=p.sup||[];o.prod=p.prod||[];o.ord=p.ord||p.inv||[];o.invs=p.invs||[];o.pay=p.pay||[];o.pur=p.pur||[];o.spay=p.spay||[];o.exp=p.exp||[];
+  o.users=(p.users&&p.users.length)?p.users:[DEF_ADMIN()];
+  if(!o.users.some(u=>u.role==='admin'&&u.active))o.users.unshift(DEF_ADMIN());
+  o.logs=p.logs||[];
+  o.prod.forEach(pr=>{if(pr.qtyLocked===undefined)pr.qtyLocked=(Number(pr.qty)||0)>0;});
+  o.pur.forEach(pr=>{
+    if(!pr.payType){
+      const paidAmt=o.spay.filter(x=>x.purId===pr.id).reduce((a,x)=>a+(Number(x.amt)||0),0);
+      if(paidAmt>=(Number(pr.total)||0)&&(Number(pr.total)||0)>0)pr.payType='cash';
+      else if(paidAmt>0){pr.payType='partial';if(!pr.bondNum)pr.bondNum=(o.s.dnP||'DB-')+(o.s.nDn++);}
+      else{pr.payType='debt';if(!pr.bondNum)pr.bondNum=(o.s.dnP||'DB-')+(o.s.nDn++);}
+    }
+  });
+  o.ord.forEach(ord=>{
+    if(ord.multiInvId&&!ord.invId)ord.invId=ord.multiInvId;
+    if(ord.invNum&&!ord.invId){
+      let ex=o.invs.find(v=>v.invNum===ord.invNum);
+      if(!ex){ex={id:'inv_mig_'+ord.id,invNum:ord.invNum,date:ord.date,cid:ord.cid||null,cname:ord.cname||'زبون نقدي',cph:ord.cph||'',caddr:'',ordIds:[ord.id],ordNums:[ord.num],items:(ord.items||[]).map(x=>({...x,ordNum:ord.num,ordDate:ord.date})),total:Number(ord.total)||0,paid:Number(ord.paid)||0,rem:Number(ord.rem)||0,st:ord.st||'unpaid',pm:ord.pm||'',note:ord.note||'',by:ord.by||'',byId:ord.byId||'',ts:ord.ts||Date.now()};o.invs.push(ex);}
+      ord.invId=ex.id;
+    }
+  });
+  return o;
+}
 function load(){
   try{
     const r=localStorage.getItem(KEY)||localStorage.getItem('erp_corp_v4')||localStorage.getItem('erp_corp_v3');
-    if(!r)return clone(DEF);
-    const p=JSON.parse(r),o=clone(DEF);
-    if(p.s)o.s={...o.s,...p.s};
-    o.cust=p.cust||[];o.sup=p.sup||[];o.prod=p.prod||[];o.ord=p.ord||p.inv||[];o.invs=p.invs||[];o.pay=p.pay||[];o.pur=p.pur||[];o.spay=p.spay||[];o.exp=p.exp||[];
-    o.users=(p.users&&p.users.length)?p.users:[DEF_ADMIN()];
-    if(!o.users.some(u=>u.role==='admin'&&u.active))o.users.unshift(DEF_ADMIN());
-    o.logs=p.logs||[];
-    o.prod.forEach(pr=>{if(pr.qtyLocked===undefined)pr.qtyLocked=(Number(pr.qty)||0)>0;});
-    o.pur.forEach(pr=>{
-      if(!pr.payType){
-        const paidAmt=o.spay.filter(x=>x.purId===pr.id).reduce((a,x)=>a+(Number(x.amt)||0),0);
-        if(paidAmt>=(Number(pr.total)||0)&&(Number(pr.total)||0)>0)pr.payType='cash';
-        else if(paidAmt>0){pr.payType='partial';if(!pr.bondNum)pr.bondNum=(o.s.dnP||'DB-')+(o.s.nDn++);}
-        else{pr.payType='debt';if(!pr.bondNum)pr.bondNum=(o.s.dnP||'DB-')+(o.s.nDn++);}
-      }
-    });
-    o.ord.forEach(ord=>{
-      if(ord.multiInvId&&!ord.invId)ord.invId=ord.multiInvId;
-      if(ord.invNum&&!ord.invId){
-        let ex=o.invs.find(v=>v.invNum===ord.invNum);
-        if(!ex){ex={id:'inv_mig_'+ord.id,invNum:ord.invNum,date:ord.date,cid:ord.cid||null,cname:ord.cname||'زبون نقدي',cph:ord.cph||'',caddr:'',ordIds:[ord.id],ordNums:[ord.num],items:(ord.items||[]).map(x=>({...x,ordNum:ord.num,ordDate:ord.date})),total:Number(ord.total)||0,paid:Number(ord.paid)||0,rem:Number(ord.rem)||0,st:ord.st||'unpaid',pm:ord.pm||'',note:ord.note||'',by:ord.by||'',byId:ord.byId||'',ts:ord.ts||Date.now()};o.invs.push(ex);}
-        ord.invId=ex.id;
-      }
-    });
-    return o;
+    return r?hydrateData(JSON.parse(r)):clone(DEF);
   }catch{return clone(DEF);}
 }
-function save(){try{localStorage.setItem(KEY,JSON.stringify(D));}catch{toast('تعذر الحفظ المحلي','err');}}
+function sbHeaders(extra={}){
+  const h={'apikey':SB_KEY,'Content-Type':'application/json',...extra};
+  if(SB_KEY.startsWith('eyJ'))h['Authorization']='Bearer '+SB_KEY;
+  return h;
+}
+function setSyncUI(st){
+  const el=$('sync-sb'),btn=$('hdr-sync');
+  if(el){
+    if(st==='saving'){el.className='text-amber-400 font-bold';el.textContent='● جاري الحفظ...';}
+    else if(st==='ok'){el.className='text-emerald-400 font-bold';el.textContent='● متصل بالسيرفر';}
+    else{el.className='text-rose-400 font-bold';el.textContent='● حفظ محلي فقط';}
+  }
+  if(btn){
+    btn.className=st==='saving'?'px-2.5 py-2 rounded-xl border border-amber-200 bg-amber-50 text-amber-800 text-xs font-black cursor-pointer':st==='ok'?'px-2.5 py-2 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-800 text-xs font-black cursor-pointer':'px-2.5 py-2 rounded-xl border border-rose-200 bg-rose-50 text-rose-800 text-xs font-black cursor-pointer';
+  }
+}
+async function pushCloud(){
+  if(isSaving){clearTimeout(syncTimer);syncTimer=setTimeout(pushCloud,400);return;}
+  isSaving=true;setSyncUI('saving');
+  try{
+    const ts=new Date().toISOString();
+    const res=await fetch(`${SB_URL}?on_conflict=id`,{
+      method:'POST',
+      headers:sbHeaders({'Prefer':'resolution=merge-duplicates,return=minimal'}),
+      body:JSON.stringify({id:SB_ROW,payload:D,updated_at:ts})
+    });
+    if(!res.ok)throw new Error('HTTP '+res.status);
+    lastCloudTs=ts;setSyncUI('ok');
+  }catch(err){
+    setSyncUI('err');
+  }finally{isSaving=false;}
+}
+async function pullCloud(silent=false){
+  if(isSaving)return false;
+  try{
+    const res=await fetch(`${SB_URL}?id=eq.${SB_ROW}&select=payload,updated_at`,{headers:sbHeaders()});
+    if(!res.ok)throw new Error('HTTP '+res.status);
+    const rows=await res.json();
+    if(Array.isArray(rows)&&rows.length&&rows[0].payload&&Object.keys(rows[0].payload).length){
+      const remoteTs=rows[0].updated_at||'';
+      if(silent&&remoteTs&&remoteTs===lastCloudTs){setSyncUI('ok');return true;}
+      D=hydrateData(rows[0].payload);
+      lastCloudTs=remoteTs;
+      try{localStorage.setItem(KEY,JSON.stringify(D));}catch{}
+      if(curUser){const nu=D.users.find(x=>x.id===curUser.id&&x.active);if(nu)curUser=nu;}
+      setSyncUI('ok');
+      const m=$('modal');
+      if(curUser&&(!m||m.classList.contains('hidden')))render();
+      if(!silent)toast('تمت المزامنة مع السيرفر');
+      return true;
+    }else{
+      await pushCloud();
+      return true;
+    }
+  }catch(err){
+    setSyncUI('err');
+    if(!silent)toast('تعذر الاتصال بالسيرفر - يعمل محلياً','warn');
+    return false;
+  }
+}
+function manualSync(){toast('جاري تحديث البيانات من السيرفر...','info');pullCloud(false);}
+function save(){
+  try{localStorage.setItem(KEY,JSON.stringify(D));}catch{toast('تعذر الحفظ المحلي','err');}
+  setSyncUI('saving');
+  clearTimeout(syncTimer);
+  syncTimer=setTimeout(pushCloud,250);
+}
+window.addEventListener('online',()=>{pushCloud();});
+
 const $=id=>document.getElementById(id),
 uid=(p='id')=>p+'_'+Date.now()+'_'+Math.random().toString(36).slice(2,6),
 today=()=>{const n=new Date();return new Date(n-n.getTimezoneOffset()*60000).toISOString().slice(0,10);},
@@ -145,7 +221,7 @@ function showLogin(){
   sc.innerHTML=`<div class="w-full max-w-md bg-white rounded-3xl shadow-2xl border overflow-hidden my-auto">
     <div class="p-6 bg-gradient-to-l from-[#0b1222] via-blue-950 to-blue-900 text-white text-center space-y-2">
       <div class="w-14 h-14 mx-auto rounded-2xl bg-white/10 border border-white/20 flex items-center justify-center font-black text-lg overflow-hidden">${D.s.logo?`<img src="${D.s.logo}" class="w-full h-full object-contain bg-white p-1"/>`:'ERP'}</div>
-      <h1 class="text-lg font-black">${esc(bName())}</h1><p class="text-xs text-blue-200">تسجيل دخول الموظفين والإدارة</p>
+      <h1 class="text-lg font-black">${esc(bName())}</h1><p class="text-xs text-blue-200">تسجيل دخول الموظفين والإدارة (سحابي)</p>
     </div>
     <form onsubmit="doLogin(event)" class="p-5 space-y-4">
       <div><label class="text-xs font-extrabold text-slate-600 block mb-1.5">اختر الموظف</label>
@@ -273,7 +349,8 @@ function markAllRead(){D.logs.forEach(l=>l.read=true);save();updNotifBadge();ren
 function waClean(ph){let d=String(ph||'').replace(/[^\d]/g,'');if(!d)return'';if(d.startsWith('00'))d=d.slice(2);else if(d.startsWith('09')&&d.length===10)d='963'+d.slice(1);return d;}
 function openWA(ph,msg=''){const n=waClean(ph),t=msg?`?text=${encodeURIComponent(msg)}`:'';window.open(n?`https://wa.me/${n}${t}`:`https://wa.me/${t}`,'_blank');}
 const waBtn=(ph,lbl='واتساب')=>`<button onclick="openWA('${esc(ph||'')}')" class="btn b-gn">${lbl||'واتساب'}</button>`;
-
+/* ===== نهاية الجزء 1 من 3 ===== */
+/* ===== بداية الجزء 2 من 3 ===== */
 function cStats(id){
   const c=byId(D.cust,id);if(!c)return{cnt:0,invCnt:0,sales:0,paid:0,bal:0};
   const op=Number(c.open)||0,ords=D.ord.filter(o=>o.cid===id),invs=D.invs.filter(v=>v.cid===id),pays=D.pay.filter(p=>p.cid===id);
@@ -858,6 +935,8 @@ function prevRv(id){
   </div>`;
   docModal(`إيصال قبض - ${p.num||'RV'}`,body,{ph:c?.phone||'',msg:waMsg},'bg-[#064e3b]',true);
 }
+/* ===== نهاية الجزء 2 من 3 ===== */
+/* ===== بداية الجزء 3 من 3 ===== */
 function vSupShell(){
   const s=dashStats(),allBonds=debtBonds(),openCnt=allBonds.filter(p=>purRem(p)>0).length;
   return `<div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
@@ -1338,13 +1417,13 @@ function vSettings(){
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5"><input id="snm" value="${esc(s.name)}" placeholder="اسم الشركة بالعربية" class="inp"/><input id="sne" value="${esc(s.nameEn)}" placeholder="Company Name" class="inp num"/><input id="sph" value="${esc(s.phone)}" placeholder="الهاتف" class="inp num"/><input id="scur" value="${esc(s.cur)}" placeholder="العملة ($ / SYP)" class="inp num"/><input id="sbnk" value="${esc(s.bank)}" placeholder="اسم البنك" class="inp"/><input id="sibn" value="${esc(s.iban)}" placeholder="IBAN / حساب" class="inp num"/></div>
     <input id="sadr" value="${esc(s.addr)}" placeholder="العنوان" class="inp w-full"/><input id="sft" value="${esc(s.foot)}" placeholder="تذييل الفواتير" class="inp w-full"/>
     <div class="flex justify-end"><button class="btn b-bl px-6 py-2.5">حفظ الإعدادات</button></div></form>
-    <div class="space-y-3"><div class="card p-4 space-y-2.5"><h3 class="font-extrabold text-sm">النسخ الاحتياطي</h3><button onclick="expJSON()" class="btn b-dk w-full py-2.5">تصدير نسخة (JSON)</button><label class="btn b-lt w-full py-2.5 border">استيراد نسخة (JSON)<input type="file" accept=".json" onchange="impJSON(event)" class="hidden"/></label></div>
-    <div class="card p-4 space-y-2.5"><h3 class="font-extrabold text-sm">التجربة وإعادة الضبط</h3><button onclick="loadSample()" class="btn bg-blue-50 text-blue-800 border w-full py-2.5">بيانات تجريبية</button><button onclick="confirmM('تصفير النظام','مسح جميع البيانات نهائياً؟',()=>{D=clone(DEF);save();logout();})" class="btn b-rs border w-full py-2.5">تصفير كافة البيانات</button></div></div></div>`;
+    <div class="space-y-3"><div class="card p-4 space-y-2.5"><h3 class="font-extrabold text-sm">المزامنة والنسخ الاحتياطي</h3><button onclick="manualSync()" class="btn b-gn w-full py-2.5">مزامنة فورية مع Supabase</button><button onclick="expJSON()" class="btn b-dk w-full py-2.5">تصدير نسخة (JSON)</button><label class="btn b-lt w-full py-2.5 border">استيراد نسخة (JSON)<input type="file" accept=".json" onchange="impJSON(event)" class="hidden"/></label></div>
+    <div class="card p-4 space-y-2.5"><h3 class="font-extrabold text-sm">التجربة وإعادة الضبط</h3><button onclick="loadSample()" class="btn bg-blue-50 text-blue-800 border w-full py-2.5">بيانات تجريبية</button><button onclick="confirmM('تصفير النظام','مسح جميع البيانات نهائياً من الجهاز والسيرفر؟',()=>{D=clone(DEF);save();logout();})" class="btn b-rs border w-full py-2.5">تصفير كافة البيانات</button></div></div></div>`;
 }
 function upLogo(e){const f=e.target.files?.[0];if(!f)return;const img=new Image(),rd=new FileReader();rd.onload=ev=>{img.onload=()=>{const cv=document.createElement('canvas'),m=160,sc=Math.min(1,m/Math.max(img.width,img.height));cv.width=img.width*sc;cv.height=img.height*sc;cv.getContext('2d').drawImage(img,0,0,cv.width,cv.height);D.s.logo=cv.toDataURL('image/png',0.85);save();render();toast('تم رفع الشعار');};img.src=ev.target.result;};rd.readAsDataURL(f);}
 function saveSet(e){e.preventDefault();Object.assign(D.s,{name:$('snm').value.trim(),nameEn:$('sne').value.trim(),phone:$('sph').value.trim(),cur:$('scur').value.trim()||'$',bank:$('sbnk').value.trim(),iban:$('sibn').value.trim(),addr:$('sadr').value.trim(),foot:$('sft').value.trim()});logAct('sys','تحديث الإعدادات','تعديل هوية الشركة وإعداداتها');save();render();toast('تم الحفظ');}
 function expJSON(){const b=new Blob([JSON.stringify(D)],{type:'application/json'}),u=URL.createObjectURL(b),a=document.createElement('a');a.href=u;a.download=`erp-${today()}.json`;a.click();URL.revokeObjectURL(u);toast('تم التصدير');}
-function impJSON(e){const f=e.target.files?.[0];if(!f)return;const r=new FileReader();r.onload=ev=>{try{localStorage.setItem(KEY,ev.target.result);D=load();render();toast('تم الاستيراد');}catch{toast('ملف غير صالح','err');}};r.readAsText(f);}
+function impJSON(e){const f=e.target.files?.[0];if(!f)return;const r=new FileReader();r.onload=ev=>{try{D=hydrateData(JSON.parse(ev.target.result));save();render();toast('تم الاستيراد والمزامنة مع السيرفر');}catch{toast('ملف غير صالح','err');}};r.readAsText(f);}
 function loadSample(){
   if(!D.s.name)Object.assign(D.s,{name:'شركة عباس للزجاج',nameEn:'ABBAS GLASS CO.',cur:'$',phone:'0931742603',addr:'دمشق - الكسوة',bank:'Commercial Bank',iban:''});
   const w=who(),c1={id:uid('c'),name:'موسى مصر',phone:'0933112233',addr:'دمشق',open:0,...w,ts:Date.now()-5e5},s1={id:uid('s'),name:'شركة النور للتوريدات',phone:'0944556677',addr:'المنطقة الصناعية',open:0,...w,ts:Date.now()-5e5},p1={id:uid('pr'),name:'مفرد | سيكوريت (شفاف) 5 ملم',cost:12,sell:15,qty:100,qtyLocked:true,min:10,...w,ts:Date.now()-5e5},p2={id:uid('pr'),name:'مفرد | سيكوريت (شفاف) 10 ملم',cost:14,sell:20,qty:80,qtyLocked:true,min:10,...w,ts:Date.now()-4e5},p3={id:uid('pr'),name:'مفرد | عادي (شفاف) 6 ملم',cost:10,sell:15,qty:60,qtyLocked:true,min:5,...w,ts:Date.now()-3e5};
@@ -1355,11 +1434,18 @@ function loadSample(){
   logAct('sys','بيانات تجريبية','تم تحميل بيانات تجريبية بنجاح');save();go('dashboard');toast('تم التحميل');
 }
 
-document.addEventListener('DOMContentLoaded',()=>{
+document.addEventListener('DOMContentLoaded',async()=>{
+  await pullCloud(true);
   let savedUid=null;try{savedUid=localStorage.getItem(SKEY);}catch{}
-  if(savedUid){const u=D.users.find(x=>x.id===savedUid&&x.active);if(u){curUser=u;go('dashboard');return;}}
-  showLogin();
+  if(savedUid){
+    const u=D.users.find(x=>x.id===savedUid&&x.active);
+    if(u){curUser=u;go('dashboard');}else{showLogin();}
+  }else{
+    showLogin();
+  }
+  setInterval(()=>{if(document.visibilityState==='visible')pullCloud(true);},15000);
 });
+/* ===== نهاية الجزء 3 من 3 ===== */
 </script>
 </body>
 </html>
