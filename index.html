@@ -42,7 +42,7 @@ span.num,strong.num,b.num{display:inline-block}
     </div>
     <div id="sb-user" class="px-3.5 py-2.5 border-b border-slate-800/80 bg-slate-900/60 flex items-center justify-between gap-2"></div>
     <nav id="sb-nav" class="flex-1 p-3 space-y-1 overflow-y-auto text-sm"></nav>
-    <div class="p-3.5 border-t border-slate-800 text-[11px] text-slate-400 flex justify-between items-center"><span class="num">ERP Cloud v7.5</span><span id="sync-sb" class="text-emerald-400 font-bold">● متصل</span></div>
+    <div class="p-3.5 border-t border-slate-800 text-[11px] text-slate-400 flex justify-between items-center"><span class="num">ERP Cloud v7.6</span><span id="sync-sb" class="text-emerald-400 font-bold">● متصل</span></div>
   </aside>
   <div class="flex-1 flex flex-col min-w-0 w-full">
     <header class="sticky top-0 z-30 bg-white/95 backdrop-blur border-b border-slate-200 px-3 sm:px-6 py-2.5 flex items-center justify-between gap-2">
@@ -67,7 +67,7 @@ span.num,strong.num,b.num{display:inline-block}
 const SB_URL='https://feymoduxvamkwtmkvmmq.supabase.co/rest/v1/erp_state',
 SB_KEY='sb_publishable_cv24c1EZeGRxZE11-BoX8w_ifkcInVC',
 SB_ROW='main',
-KEY='erp_corp_v5',SKEY='erp_active_uid',
+KEY='erp_ahmadnablsi_v1',SKEY='erp_ahmadnablsi_uid',
 DEF_ADMIN=()=>({id:'u_admin',name:'المدير العام',title:'مدير النظام',role:'admin',pin:'1234',active:true,perms:{del:true,set:true,fin:true},ts:Date.now()}),
 DEF={s:{name:'',nameEn:'',sub:'',logo:'',cur:'$',phone:'',addr:'',bank:'',iban:'',ordP:'ORD-',invP:'INV-',rvP:'RV-',purP:'PUR-',pvP:'PV-',dnP:'DB-',foot:'شكراً لتعاملكم معنا - Thank you for your business',nOrd:1001,nInv:2026001,nRv:1001,nPur:3001,nPv:2001,nDn:4001},cust:[],sup:[],prod:[],ord:[],invs:[],pay:[],pur:[],spay:[],exp:[],users:[DEF_ADMIN()],logs:[]},
 CATS=['إيجار','رواتب وأجور','كهرباء ومياه','شحن ونقل','صيانة','مشتريات ونثريات','أخرى'],
@@ -109,7 +109,7 @@ function hydrateData(p){
 }
 function load(){
   try{
-    const r=localStorage.getItem(KEY)||localStorage.getItem('erp_corp_v4')||localStorage.getItem('erp_corp_v3');
+    const r=localStorage.getItem(KEY);
     return r?hydrateData(JSON.parse(r)):clone(DEF);
   }catch{return clone(DEF);}
 }
@@ -157,13 +157,15 @@ async function pullCloud(silent=false){
       D=hydrateData(rows[0].payload);
       lastCloudTs=remoteTs;
       try{localStorage.setItem(KEY,JSON.stringify(D));}catch{}
-      if(curUser){const nu=D.users.find(x=>x.id===curUser.id&&x.active);if(nu)curUser=nu;}
+      if(curUser){const nu=D.users.find(x=>x.id===curUser.id&&x.active);if(nu)curUser=nu;else{curUser=null;showLogin();return true;}}
       setSyncUI('ok');
       const m=$('modal');
       if(curUser&&(!m||m.classList.contains('hidden')))render();
       if(!silent)toast('تمت المزامنة مع السيرفر');
       return true;
     }else{
+      D=clone(DEF);
+      try{localStorage.setItem(KEY,JSON.stringify(D));}catch{}
       await pushCloud();
       return true;
     }
@@ -1412,27 +1414,14 @@ function delEmp(id){const u=byId(D.users,id);if(!u)return;if(u.role==='admin'&&D
 
 function vSettings(){
   const s=D.s;
-  return `<div class="grid grid-cols-1 lg:grid-cols-3 gap-4"><form onsubmit="saveSet(event)" class="lg:col-span-2 card p-4 space-y-3"><h3 class="font-extrabold border-b pb-2">هوية الشركة والعملة</h3>
+  return `<div class="max-w-3xl mx-auto"><form onsubmit="saveSet(event)" class="card p-5 space-y-3.5"><h3 class="font-extrabold border-b pb-2.5 text-base">هوية الشركة والعملة</h3>
     <div class="flex items-center gap-3 p-3 rounded-xl bg-slate-50 border"><div class="w-12 h-12 rounded-xl border bg-white flex items-center justify-center overflow-hidden">${s.logo?`<img src="${s.logo}" class="w-full h-full object-contain p-1"/>`:'<span class="text-[10px] text-slate-400 font-bold">LOGO</span>'}</div><label class="btn b-bl">رفع شعار<input type="file" accept="image/*" onchange="upLogo(event)" class="hidden"/></label>${s.logo?'<button type="button" onclick="D.s.logo=\'\';save();render()" class="btn b-rs">إزالة</button>':''}</div>
     <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5"><input id="snm" value="${esc(s.name)}" placeholder="اسم الشركة بالعربية" class="inp"/><input id="sne" value="${esc(s.nameEn)}" placeholder="Company Name" class="inp num"/><input id="sph" value="${esc(s.phone)}" placeholder="الهاتف" class="inp num"/><input id="scur" value="${esc(s.cur)}" placeholder="العملة ($ / SYP)" class="inp num"/><input id="sbnk" value="${esc(s.bank)}" placeholder="اسم البنك" class="inp"/><input id="sibn" value="${esc(s.iban)}" placeholder="IBAN / حساب" class="inp num"/></div>
     <input id="sadr" value="${esc(s.addr)}" placeholder="العنوان" class="inp w-full"/><input id="sft" value="${esc(s.foot)}" placeholder="تذييل الفواتير" class="inp w-full"/>
-    <div class="flex justify-end"><button class="btn b-bl px-6 py-2.5">حفظ الإعدادات</button></div></form>
-    <div class="space-y-3"><div class="card p-4 space-y-2.5"><h3 class="font-extrabold text-sm">المزامنة والنسخ الاحتياطي</h3><button onclick="manualSync()" class="btn b-gn w-full py-2.5">مزامنة فورية مع Supabase</button><button onclick="expJSON()" class="btn b-dk w-full py-2.5">تصدير نسخة (JSON)</button><label class="btn b-lt w-full py-2.5 border">استيراد نسخة (JSON)<input type="file" accept=".json" onchange="impJSON(event)" class="hidden"/></label></div>
-    <div class="card p-4 space-y-2.5"><h3 class="font-extrabold text-sm">التجربة وإعادة الضبط</h3><button onclick="loadSample()" class="btn bg-blue-50 text-blue-800 border w-full py-2.5">بيانات تجريبية</button><button onclick="confirmM('تصفير النظام','مسح جميع البيانات نهائياً من الجهاز والسيرفر؟',()=>{D=clone(DEF);save();logout();})" class="btn b-rs border w-full py-2.5">تصفير كافة البيانات</button></div></div></div>`;
+    <div class="flex justify-end pt-1"><button class="btn b-bl px-6 py-2.5">حفظ الإعدادات</button></div></form></div>`;
 }
 function upLogo(e){const f=e.target.files?.[0];if(!f)return;const img=new Image(),rd=new FileReader();rd.onload=ev=>{img.onload=()=>{const cv=document.createElement('canvas'),m=160,sc=Math.min(1,m/Math.max(img.width,img.height));cv.width=img.width*sc;cv.height=img.height*sc;cv.getContext('2d').drawImage(img,0,0,cv.width,cv.height);D.s.logo=cv.toDataURL('image/png',0.85);save();render();toast('تم رفع الشعار');};img.src=ev.target.result;};rd.readAsDataURL(f);}
 function saveSet(e){e.preventDefault();Object.assign(D.s,{name:$('snm').value.trim(),nameEn:$('sne').value.trim(),phone:$('sph').value.trim(),cur:$('scur').value.trim()||'$',bank:$('sbnk').value.trim(),iban:$('sibn').value.trim(),addr:$('sadr').value.trim(),foot:$('sft').value.trim()});logAct('sys','تحديث الإعدادات','تعديل هوية الشركة وإعداداتها');save();render();toast('تم الحفظ');}
-function expJSON(){const b=new Blob([JSON.stringify(D)],{type:'application/json'}),u=URL.createObjectURL(b),a=document.createElement('a');a.href=u;a.download=`erp-${today()}.json`;a.click();URL.revokeObjectURL(u);toast('تم التصدير');}
-function impJSON(e){const f=e.target.files?.[0];if(!f)return;const r=new FileReader();r.onload=ev=>{try{D=hydrateData(JSON.parse(ev.target.result));save();render();toast('تم الاستيراد والمزامنة مع السيرفر');}catch{toast('ملف غير صالح','err');}};r.readAsText(f);}
-function loadSample(){
-  if(!D.s.name)Object.assign(D.s,{name:'شركة عباس للزجاج',nameEn:'ABBAS GLASS CO.',cur:'$',phone:'0931742603',addr:'دمشق - الكسوة',bank:'Commercial Bank',iban:''});
-  const w=who(),c1={id:uid('c'),name:'موسى مصر',phone:'0933112233',addr:'دمشق',open:0,...w,ts:Date.now()-5e5},s1={id:uid('s'),name:'شركة النور للتوريدات',phone:'0944556677',addr:'المنطقة الصناعية',open:0,...w,ts:Date.now()-5e5},p1={id:uid('pr'),name:'مفرد | سيكوريت (شفاف) 5 ملم',cost:12,sell:15,qty:100,qtyLocked:true,min:10,...w,ts:Date.now()-5e5},p2={id:uid('pr'),name:'مفرد | سيكوريت (شفاف) 10 ملم',cost:14,sell:20,qty:80,qtyLocked:true,min:10,...w,ts:Date.now()-4e5},p3={id:uid('pr'),name:'مفرد | عادي (شفاف) 6 ملم',cost:10,sell:15,qty:60,qtyLocked:true,min:5,...w,ts:Date.now()-3e5};
-  D.cust.push(c1);D.sup.push(s1);D.prod.push(p1,p2,p3);
-  const pur1={id:uid('pur'),num:D.s.purP+D.s.nPur++,bondNum:D.s.dnP+D.s.nDn++,payType:'debt',date:today(),sid:s1.id,sname:s1.name,items:[{pid:p1.id,name:p1.name,qty:100,pr:12,tot:1200},{pid:p2.id,name:p2.name,qty:80,pr:14,tot:1120}],total:2320,note:'توريد أول بالدين',...w,ts:Date.now()-3e5};
-  D.pur.push(pur1);
-  D.ord.push({id:uid('ord'),num:D.s.ordP+D.s.nOrd++,invId:null,invNum:null,date:today(),cid:c1.id,cname:c1.name,cph:c1.phone,items:[{pid:p1.id,name:p1.name,qty:59,pr:15,cost:12,tot:885},{pid:p2.id,name:p2.name,qty:32,pr:20,cost:14,tot:640},{pid:p3.id,name:p3.name,qty:1,pr:15,cost:10,tot:15}],total:1540,paid:1540,rem:0,st:'paid',pm:'كاش',note:'',...w,ts:Date.now()-2e5});
-  logAct('sys','بيانات تجريبية','تم تحميل بيانات تجريبية بنجاح');save();go('dashboard');toast('تم التحميل');
-}
 
 document.addEventListener('DOMContentLoaded',async()=>{
   await pullCloud(true);
